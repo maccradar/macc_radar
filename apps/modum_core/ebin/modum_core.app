@@ -13,7 +13,7 @@
               {registered,[]},
               {included_applications,[util,blackboard]},
               {applications,[kernel,stdlib,blackboard,util]},
-              {env,[{project_dir,"/research/workspace/Erlang/"},
+              {env,[{project_dir,"/research/workspace/Erlang/macc_radar"},
                     {include_dir,"apps/modum_core/include/"},
                     {com_dir,"modum_maps/"},
                     {map,"modum_nottingham_map.xml"},

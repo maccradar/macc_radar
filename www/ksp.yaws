@@ -29,9 +29,10 @@
 %  OF SUCH DAMAGE.                                                                                        %
 %                                                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
-
+-include_lib("modum_core/include/states.hrl").
 out(A) ->
 	{Links, Nodes} = modum_proxy:get_status_info(),
+	io:format("~p~n", [Nodes]),
 	Names_Ids = lists:usort(lists:zip([node_holon:get_description(X) || X <- Nodes], [atom_to_list(X) || X <- Nodes])),
 	Names = [N || {N,_} <- Names_Ids],
 	Ids = [I || {_,I} <- Names_Ids],

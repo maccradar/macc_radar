@@ -173,7 +173,9 @@ init(Map, ProxyState=#proxyState{model=Model}) ->
 			{ok, LSV} = link_holon_sv:start_link(simple),
 			lists:foreach(fun(Link)->supervisor:start_child(LSV, [Link]) end, Links),
 			{ok, VSV} = vehicle_holon_sv:start_link(simple),
-			modum_proxy:create_graph({Nodes, Links}),
+			U = atom_to_list(?undefined),
+			FilterN = [F || F <- Nodes, F#nodeState.coordinates /= {U,U}],
+			modum_proxy:create_graph({FilterN, Links}),
 			{ok, NSV, LSV, VSV};
 		{error, Error} ->
 			Error

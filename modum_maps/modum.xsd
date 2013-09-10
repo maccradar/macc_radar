@@ -34,7 +34,7 @@
 	  <xs:element ref="roadType" minOccurs="1" />
     </xs:all>
   </xs:complexType>
-
+	
   <xs:complexType name="linkInformationType">
     <xs:annotation>
       <xs:documentation>

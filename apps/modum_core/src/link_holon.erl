@@ -194,13 +194,13 @@ handle_info(updateBlackboard, #linkBeing{blackboard=BB} = LB)->
 % callback to handle updateBlackboard message. This is the reply from the begin blackboard with the new cumulative flow
 handle_info({updateBlackboard,bb_b,CF_B_points}, #linkBeing{state=#linkState{id=ID},blackboard=BB} = LB)->
 	CF_B = cumulative_flow:get_cumulative(CF_B_points),
-	NewLB = #linkBeing{blackboard=BB#blackboard{cf_b=CF_B}},
+	NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B}},
 	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_end=BB#blackboard.cf_e,cf_begin=CF_B}),
 	{noreply, NewLB};
 % callback to handle updateBlackboard message. This is the reply from the end blackboard with the new cumulative flow
 handle_info({updateBlackboard,bb_e,CF_E_points}, #linkBeing{state=#linkState{id=ID},blackboard=BB} = LB)->
 	CF_E = cumulative_flow:get_cumulative(CF_E_points),
-	NewLB = #linkBeing{blackboard=BB#blackboard{cf_e=CF_E}},
+	NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_e=CF_E}},
 	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=BB#blackboard.cf_b,cf_end=CF_E}),
 	{noreply, NewLB};
 % callback to handle propagateFlowDown message. This is periodically called to propagate traffic flow down the link and thereby update the cumulative flows.
@@ -213,16 +213,15 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 							 % io:format("CF_B undefined. not propagating flow down~n"),
 							 % {noreply, LB};
 				{CF_B, CF_E}->MaxGrad = fundamental_diagram:c(FD),
-							  %CF_B1 =  link_model:accommodate_max_capacity( CF_B, MaxGrad),
-							  CF_E1 = link_model:propagate_flow(down,CF_B, LB),
-							  CF_E2 = link_model:accommodate_max_capacity( CF_E1, MaxGrad),
+							  CF_B1 =  link_model:accommodate_max_capacity( CF_B, MaxGrad),
+							  CF_E1 = link_model:propagate_flow(down,CF_B1, LB),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=CF_E}),
-							  %NewLB1 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B1,cf_e=CF_E1}},  
-							  %UPContraint = link_model:propagate_flow(up,CF_E1, NewLB1),
+							  NewLB1 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B1,cf_e=CF_E1}},  
+							  UPContraint = link_model:propagate_flow(up,CF_E1, NewLB1),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=UPContraint}),
-							  %NewCF_B = cumulative_flow:constrain_cf(CF_B1, UPContraint),
+							  NewCF_B = cumulative_flow:constrain_cf(CF_B1, UPContraint),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=NewCF_B}),
-							  NewLB2 = LB#linkBeing{blackboard=BB#blackboard{cf_e=CF_E2}}, 
+							  NewLB2 = NewLB1#linkBeing{blackboard=BB#blackboard{cf_b=NewCF_B,cf_e=CF_E1}}, 
 		%%					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=NewCF_B,cf_end=CF_E}),
 							  ID ! {updateBeing, NewLB2}
 			end
