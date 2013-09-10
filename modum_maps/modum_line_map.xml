@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<topologyMap>
+    <name>diamond</name>
+    <version>1</version>
+    <link>
+        <id>link0</id>
+        <numLanes>1</numLanes>
+        <length>10000.0</length>
+        <maxSpeed>11.0</maxSpeed>
+		 <shape></shape>
+    </link>
+    <node>
+        <id>node0</id>
+        <nodeDesc>node0</nodeDesc>
+        <linkPair>
+            <idfrom>in</idfrom>
+            <idto>link0</idto>
+        </linkPair>
+    </node>
+    <node>
+        <id>node1</id>
+        <nodeDesc>node1</nodeDesc>
+        <linkPair>
+            <idfrom>link0</idfrom>
+            <idto>out</idto>
+        </linkPair>
+    </node>
+</topologyMap>

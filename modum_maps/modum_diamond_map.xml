@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<topologyMap>
+    <name>diamond</name>
+    <version>1</version>
+    <link>
+        <id>link0</id>
+        <numLanes>1</numLanes>
+        <length>5000.0</length>
+        <maxSpeed>11.0</maxSpeed>
+		<shape>0.0,0.0 4.0,3.0</shape>
+    </link>
+    <link>
+        <id>link1</id>
+        <numLanes>1</numLanes>
+        <length>5000.0</length>
+        <maxSpeed>11.0</maxSpeed>
+		<shape>0.0,0.0 4.0,-3.0</shape>
+    </link>
+    <link>
+        <id>link2</id>
+        <numLanes>1</numLanes>
+        <length>5000.0</length>
+        <maxSpeed>11.0</maxSpeed>
+		<shape>4.0,3.0 8.0,0.0</shape>
+    </link>
+    <link>
+        <id>link3</id>
+        <numLanes>1</numLanes>
+        <length>5000.0</length>
+        <maxSpeed>11.0</maxSpeed>
+		<shape>4.0,-3.0 8.0,0.0</shape>
+    </link>
+    <node>
+        <id>node0</id>
+        <nodeDesc>node0</nodeDesc>
+        <linkPair>
+            <idfrom>in</idfrom>
+            <idto>link0</idto>
+        </linkPair>
+        <linkPair>
+            <idfrom>in</idfrom>
+            <idto>link1</idto>
+        </linkPair>
+    </node>
+    <node>
+        <id>node1</id>
+        <nodeDesc>node1</nodeDesc>
+        <linkPair>
+            <idfrom>link0</idfrom>
+            <idto>link2</idto>
+        </linkPair>
+    </node>
+    <node>
+        <id>node2</id>
+        <nodeDesc>node2</nodeDesc>
+        <linkPair>
+            <idfrom>link1</idfrom>
+            <idto>link3</idto>
+        </linkPair>
+    </node>
+    <node>
+        <id>node3</id>
+        <nodeDesc>node3</nodeDesc>
+        <linkPair>
+            <idfrom>link2</idfrom>
+            <idto>out</idto>
+        </linkPair>
+        <linkPair>
+            <idfrom>link3</idfrom>
+            <idto>out</idto>
+        </linkPair>
+    </node>
+</topologyMap>

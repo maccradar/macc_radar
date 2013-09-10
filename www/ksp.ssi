@@ -1,0 +1,184 @@
+<html>
+<head>
+</head>
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5/leaflet.css" />
+ <!--[if lte IE 8]>
+     <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5/leaflet.ie.css" />
+ <![endif]-->
+<body>
+<style>
+.fixed-size  {
+  width: 200px;
+}
+</style>
+ <div>
+  <form method="post" action="/ksp_post.yaws" class="validate">
+    <p>
+      Origin: 
+	  <select name="origin" id="origin" class="word fixed-size">
+  </select>
+  </p>
+  <p>
+	  Destination:
+	  <select name="destination" id="destination" class="word fixed-size">
+  </select>
+ </p>
+   <p>
+	  Number of paths:
+	  <select name=k id="k">
+	<option value="1">1 </option>
+	<option value="2">2 </option>
+	<option value="3">3</option>
+	<option value="4">4</option>
+	<option value="5">5</option>
+  </select>
+ </p>
+   <p>
+	<input type="checkbox" name="simulate" id="simulate" onclick = 'javascript:displaySimulate(this)' value="1"> Simulate traffic
+ </p>	
+ <table id = "simulateTraffic"></table>
+      <input type="submit" value="Go!" />
+
+  </form>
+  </div>
+<script>
+	var o = document.getElementById("origin"); 
+	var d = document.getElementById("destination");
+	var options = %nodeNames%;
+	var values = %nodeIds%;
+	var sim = document.getElementById("simulateTraffic");
+	
+	for(var i = 0; i < options.length; i++) {
+		var el = document.createElement("option");
+		el.textContent = options[i] + " (" + values[i] + ")";;
+		el.value = values[i];
+		o.appendChild(el);
+		var node= o.lastChild.cloneNode(true);
+		d.appendChild(node);
+	}
+	
+	function displaySimulate(cb) {	
+		if(cb.checked) {
+			sim.border = "1";
+			var headerRow = sim.insertRow(0);
+			var nbrVehiclesHeader = headerRow.insertCell(0);
+			nbrVehiclesHeader.innerHTML = "# vehicles";
+			var vehicleTypeHeader = headerRow.insertCell(1);
+			vehicleTypeHeader.innerHTML = "type";
+			var startHeader = headerRow.insertCell(2);
+			startHeader.innerHTML = "departure time (start)";
+			var endHeader = headerRow.insertCell(3);
+			endHeader.innerHTML = "departure time (end)";
+			var arrivalHeader = headerRow.insertCell(4);
+			arrivalHeader.innerHTML = "arrival time";
+			var upstreamHeader = headerRow.insertCell(5);
+			var upstreamLabel = document.createTextNode("search upstream?");
+			var upstream = document.createElement("input");
+			upstream.name = "upstream";
+			upstream.type = "checkbox";
+			upstream.id = "upstream";
+			upstream.value = "1";
+			upstream.text = "search upstream"
+			upstream.onclick = function() { showHideUpstream(upstream); };
+			upstreamHeader.appendChild(upstream);
+			upstreamHeader.appendChild(upstreamLabel);
+			var plusHeader = headerRow.insertCell(6);
+			var plus = document.createElement("input");
+			plus.name = "plus";
+			plus.type = "button";
+			plus.value = "+";
+			plus.onclick = function() { addSimRow(); showHideUpstream(upstream); };
+			plusHeader.appendChild(plus);
+			var min = document.createElement("input");
+			min.name = "min";
+			min.type = "button";
+			min.value = "-";
+			min.onclick = function() { removeSimRow(); showHideUpstream(upstream); };
+			plusHeader.appendChild(min);
+			addSimRow();
+			showHideUpstream(upstream);
+		}
+		else {
+			sim.border = "0";
+			sim.innerHTML = "";
+		}
+	}
+	
+	function addSimRow() {
+		var dataRow = sim.insertRow(sim.rows.length);
+		var nbrVehiclesData = dataRow.insertCell(0);
+		var vehicleTypeData = dataRow.insertCell(1);
+		var startData = dataRow.insertCell(2);
+		var endData = dataRow.insertCell(3);
+		var arrivalData = dataRow.insertCell(4);
+		
+		var nbrVehicles = document.createElement("input");
+		nbrVehicles.name = "nbrVehicles";
+		nbrVehicles.type = "number";
+		nbrVehicles.min = "1";
+		nbrVehicles.max = "10000";
+		nbrVehicles.value = "1000";
+		nbrVehiclesData.appendChild(nbrVehicles);
+		
+		var typeSelect = document.createElement("select");
+		typeSelect.name = "type";
+		var typeOptions = ["auto", "auto_once", "interactive"];
+		
+		for(var i = 0; i < typeOptions.length; i++) {
+			var el = document.createElement("option");
+			el.textContent = typeOptions[i];
+			el.value = typeOptions[i];
+			typeSelect.appendChild(el);
+		}
+		vehicleTypeData.appendChild(typeSelect);
+		
+		var start = document.createElement("input");
+		start.name = "start";
+		start.type = "number";
+		start.min = "0";
+		start.max = "10000";
+		start.value = "0";
+		startData.appendChild(start);
+		
+		var end = document.createElement("input");
+		end.name = "end";
+		end.type = "number";
+		end.min = "0";
+		end.max = "10000";
+		end.value = "0";
+		endData.appendChild(end);
+		
+		var arrival = document.createElement("input");
+		arrival.name = "arrival";
+		arrival.type = "number";
+		arrival.min = "0";
+		arrival.max = "100000";
+		arrival.value = "100";
+		arrivalData.appendChild(arrival);
+	}
+	
+	function removeSimRow() {
+		if(sim.rows.length > 2)
+			sim.deleteRow(sim.rows.length-1);
+	}
+	
+	function showHideUpstream(upstream) {
+		if(upstream.checked) {
+			for (var i = 0; i<sim.rows.length;i++) {
+				sim.rows[i].cells[2].style.display = 'none';
+				sim.rows[i].cells[3].style.display = 'none';
+				sim.rows[i].cells[4].style.display = 'block';
+			}
+		} else {
+			for (var i = 0; i<sim.rows.length;i++) {
+				sim.rows[i].cells[2].style.display = 'block';
+				sim.rows[i].cells[3].style.display = 'block';
+				sim.rows[i].cells[4].style.display = 'none';
+			}
+		}
+	};
+
+</script>
+<script type="text/javascript" src="validatious/validatious-min.js"></script>  
+</body>
+</html>

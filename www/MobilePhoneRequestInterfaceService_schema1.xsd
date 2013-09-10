@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xs:schema version="1.0" targetNamespace="http://mobilephone.modum.mm/" xmlns:tns="http://mobilephone.modum.mm/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:element name="mapInfoRequest" type="tns:mapInfoRequest"/>
+
+  <xs:element name="preferenceList" type="tns:preferenceList"/>
+
+  <xs:element name="provideMapInfoRequest" type="tns:provideMapInfoRequest"/>
+
+  <xs:element name="provideMapInfoRequestResponse" type="tns:provideMapInfoRequestResponse"/>
+
+  <xs:complexType name="provideMapInfoRequest">
+    <xs:sequence>
+      <xs:element name="mapInfoRequest" type="tns:mapInfoRequest" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="mapInfoRequest" final="extension restriction">
+    <xs:sequence>
+      <xs:element name="deviceID" type="xs:string" minOccurs="0"/>
+      <xs:element name="requestID" type="xs:int"/>
+      <xs:element name="timestamp" type="xs:dateTime" minOccurs="0"/>
+      <xs:element name="originID" type="xs:string" minOccurs="0"/>
+      <xs:element name="destinationID" type="xs:string" minOccurs="0"/>
+      <xs:element name="preferences" type="tns:preferenceList" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="preferenceList" final="extension restriction">
+    <xs:sequence>
+      <xs:element name="departureTime" type="xs:dateTime" minOccurs="0"/>
+      <xs:element name="arrivalTime" type="xs:dateTime" minOccurs="0"/>
+      <xs:element name="preferredTransport" type="tns:eTransportType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="provideMapInfoRequestResponse">
+    <xs:sequence/>
+  </xs:complexType>
+
+  <xs:simpleType name="eTransportType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="CAR"/>
+      <xs:enumeration value="TRAIN"/>
+      <xs:enumeration value="TRAM"/>
+      <xs:enumeration value="PEDESTRIAN"/>
+      <xs:enumeration value="BUS"/>
+      <xs:enumeration value="UNKNOWN"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="eTransportType" type="tns:eTransportType"/>
+</xs:schema>
+

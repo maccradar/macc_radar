@@ -1,0 +1,118 @@
+<!-- HTML document served to start the Server Side Events demo
+     See examples/src/server_side_events.erl for the server -->
+<html>
+<head>
+  <link rel="stylesheet" href="font-awesome/css/font-awesome.min.css">
+  <link rel="stylesheet" href="awesome-markers/dist/leaflet.awesome-markers.css">
+  <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.css" />
+<!--[if lte IE 8]>
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.ie.css" />
+    <link rel="stylesheet" href="css/font-awesome-ie7.min.css">
+<![endif]-->
+</head>
+<body>
+
+<h2> Current traffic estimation </h2>
+<div id="map" style="width: 600px; height: 400px"></div>
+	 <script src="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.js"></script>
+  <script src="awesome-markers/dist/leaflet.awesome-markers.js"></script>
+	<script>
+		function get_color(i) {
+			if(i == 1)
+				return "#00ff00";
+			if(i == 2)
+				return "#ffff00";
+			if(i == 3)
+				return "#ff0000";
+			return "#ffffff";
+		}
+
+		function createRoute(latlon, color) {
+                var point, points = [];
+                for (var i=0; i< latlon.length; i++)
+                {
+					if(latlon[i][0] != "undefined" && latlon[i][1] != "undefined") {
+						point = new L.LatLng(latlon[i][0] , latlon[i][1]);
+						points.push(point);
+					}
+                }
+				var layer = new L.Polyline(points, {
+                    weight: 5,
+                    opacity: 0.75,
+                    smoothFactor: 1,
+					color: color
+                });
+				return layer;
+  		}
+		var tileSize = 256;
+		var cloudmadeUrl = 'http://{s}.tile.cloudmade.com/BC9A493B41014CAABB98F0471D759707/{styleId}/'+tileSize+'/{z}/{x}/{y}.png',
+		attribution = 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>'
+		var minimal   = L.tileLayer(cloudmadeUrl, {styleId: 22677, attribution: attribution}), // grayscale
+			fresh = L.tileLayer(cloudmadeUrl, {styleId: 997, attribution: attribution}), // color distinction between roads
+		    midnight  = L.tileLayer(cloudmadeUrl, {styleId: 999,   attribution: attribution}), // night view
+			motorways = L.tileLayer(cloudmadeUrl, {styleId: 3007, attribution: attribution}); // motorways are highlighted in pink
+			  
+  var startMarker = L.AwesomeMarkers.icon({
+		  icon: 'home', 
+		  color: 'green'
+		})
+		
+		var finishMarker = L.AwesomeMarkers.icon({
+		  icon: 'flag', 
+		  color: 'red'
+		})
+
+		var routeLayer = L.layerGroup();
+				
+		var map = L.map('map', {
+		    layers: [minimal, routeLayer]
+		});
+		
+		var baseMaps = {
+			"Coloured": fresh,
+			"Minimal": minimal,
+			"Night View": midnight
+		};
+
+		var overlayMaps = {
+			"Routes": routeLayer,
+			"Motorways": motorways
+		};
+				
+		L.control.layers(baseMaps, overlayMaps).addTo(map);
+		map.setView(%center%, 13);
+
+		//map.on('click', onMapClick);
+
+
+	//Server side events for traffic density estimation
+    var refresh_source = "";
+	
+	function refresh(cb) {
+		if(cb.checked) {
+			refresh_source = new EventSource("/density/?primary=1&trunk=1");
+			refresh_source.onmessage = function(event) {
+				var d = window.atob(event.data);
+				var routes = eval(d);
+				routeLayer.clearLayers();
+				for(var i=0; i<routes.length;i++) {
+					routeLayer.addLayer(createRoute(routes[i][0],get_color(routes[i][1])));
+				}
+			};
+		}
+		else {
+			refresh_source.close();
+		}
+	};
+ </script>	
+ <label><input type='checkbox' onclick = 'refresh(this);'> Auto refresh</label>
+ <h2>Tools</h2>
+
+<ul>
+<li><a href="ksp.yaws">Run traffic density simulation scenarios</a></li>
+<li><a href="status.yaws">Individual link status info</a></li>
+</ul>
+
+
+</body>
+</html>

@@ -1,0 +1,7 @@
+{application,util,
+             [{description,"util library application"},
+              {vsn,"0.1"},
+              {modules,[cumulative_func,debug,line_segment,tree_utils,util]},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {env,[]}]}.

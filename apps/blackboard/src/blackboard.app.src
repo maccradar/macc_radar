@@ -1,0 +1,21 @@
+{application, blackboard,
+ [
+  {description, "blackboard library application"},
+  {vsn, "0.1"},
+  {modules, [
+			 bb_ets,
+			 bb_test,
+			 bb_trafficflow,
+			 list_bucket,
+			 pheromone,
+			 time_buckets,
+			 time_buckets_lists
+			]},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+				  util
+                 ]},
+  {env, []}
+ ]}.

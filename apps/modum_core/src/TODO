@@ -1,0 +1,69 @@
+Legend
+------
+_ TODO
+v completed
+x failed
+J johan
+B bart
+
+WP2
+---
+v change name agent to holon
+v Integrate upstream model and min CF into link holon
+B difference of 2 CFs --> check if there is a big change --> update frequency
+v blackboard: update pheromone if vehicle has already a pheromone in the BB
+B time progress in CFs and blackboard while running traffic radar 23/8
+J supervisor for modum_client
+B file terugslag 9/8
+  - integrate node model 2/8
+  - flow ant 9/8
+B forward flow ant 14/8
+v test intention ants
+J upstream explorers 9/8
+J multi-modal? 16/8
+
+WP3
+---
+J simulations -> input required (NTU), performance criteria and test scenarios required (TML) 2/8
+
+WP5
+---
+v UNIMAN - KUL Interaction description
+v Data format (xmlrpc)
+J communication infrastructure / integration 9/8
+BJ soap soap 2/8
+J organise plenary meeting in Leuven 2/8
+J review in nottingham?
+BJ D5.1 (interaction UNIMAN-KUL) 15/9
+BJ D5.2 (infrastructure) 15/9
+
+issues
+------
+BJ check dialyzer warnings 31/8
+BJ timeouts 31/8
+J MECA server capacity -> mail technolution 2/8
+_ faster than realtime simulation not possible (yet)
+		
+Papers
+------
+v Holomas (18 maart) http://cyber.felk.cvut.cz/HoloMAS/2013/
+x mt-its2013 (31 juli : paper submission) http://tu-dresden.de/die_tu_dresden/fakultaeten/vkw/vis/vlp/mt-its2013
+x IVCITS (icinco) 15 may http://www.icinco.org/IVCITS.aspx focus on simulation without need for real world
+x ITSC (5 april): http://ieee-itsc13.org/ Special Session on Artificial Transportation Systems and Simulation
+
+ant docs
+--------
+- start at begin of link or node
+- antState contains position, which is the resource and position on that resource on which the ant has to execute its current scenario, e.g. {link1, begin}
+- antState contains time, at which the state is valid, e.g. at which the vehicle is on the given position
+- antState contains boundaryCondition, which is set in createScenario and determines when the scenario is finished. should be a tuple {resource, position}, e.g {node_out, begin}
+- history contains a previously executed scenarios
+- ant record contains hop limit
+
+Erlang rules
+------------
+http://www.erlang.se/doc/programming_rules.shtml
+- Use functions for interfaces whenever possible, avoid sending messages directly. Encapsulate message passing into interface functions. There are cases where you can't do this. The message protocol is internal information and should be hidden to other modules.
+- Use tagged return values, e.g. {value, Value}.
+- Choose meaningful variable names - this is very difficult. If a variable name consists of several words, use "_" or a capitalized letter to separate them. Example: My_variable or MyVariable.
+- Avoid using "_" as don't care variable, use variables beginning with "_" instead. Example: _Name.

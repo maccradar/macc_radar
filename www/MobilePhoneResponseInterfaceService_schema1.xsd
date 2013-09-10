@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xs:schema version="1.0" targetNamespace="http://mobilephone.modum.mm/" xmlns:tns="http://mobilephone.modum.mm/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:element name="eTransportType" type="tns:eTransportType"/>
+
+  <xs:element name="mapInfoResponse" type="tns:mapInfoResponse"/>
+
+  <xs:element name="mapSegmentList" type="tns:mapSegmentList"/>
+
+  <xs:element name="provideMapInfoResponse" type="tns:provideMapInfoResponse"/>
+
+  <xs:element name="provideMapInfoResponseResponse" type="tns:provideMapInfoResponseResponse"/>
+
+  <xs:element name="summary" type="tns:summary"/>
+
+  <xs:complexType name="provideMapInfoResponse">
+    <xs:sequence>
+      <xs:element name="mapInfoResponse" type="tns:mapInfoResponse" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="mapInfoResponse" final="extension restriction">
+    <xs:sequence>
+      <xs:element name="deviceID" type="xs:string" minOccurs="0"/>
+      <xs:element name="requestID" type="xs:int"/>
+      <xs:element name="timestamp" type="xs:dateTime" minOccurs="0"/>
+      <xs:element name="suggestedRoute" type="tns:mapSegmentList" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="summary" type="tns:summary" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="mapSegmentList" final="extension restriction">
+    <xs:sequence>
+      <xs:element name="IDs" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="modeOfTransport" type="tns:eTransportType" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="summary" final="extension restriction">
+    <xs:sequence>
+      <xs:element name="journeyTime" type="xs:dateTime" minOccurs="0"/>
+      <xs:element name="co2" type="xs:int"/>
+      <xs:element name="trafficJam" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="provideMapInfoResponseResponse">
+    <xs:sequence/>
+  </xs:complexType>
+
+  <xs:simpleType name="eTransportType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="CAR"/>
+      <xs:enumeration value="TRAIN"/>
+      <xs:enumeration value="TRAM"/>
+      <xs:enumeration value="PEDESTRIAN"/>
+      <xs:enumeration value="BUS"/>
+      <xs:enumeration value="UNKNOWN"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>
+

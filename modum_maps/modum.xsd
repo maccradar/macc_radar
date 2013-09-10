@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" version="1.1">
+
+  <!-- definition of simple elements for later -->
+  <xs:element name="id" type="xs:string" />
+  <xs:element name="numLanes" type="xs:integer" />
+  <xs:element name="length" type="xs:double" />
+  <xs:element name="co2emissions" type="xs:double" />
+  <xs:element name="density" type="xs:double" />
+  <xs:element name="avgSpeed" type="xs:double" />
+  <xs:element name="maxSpeed" type="xs:double" />
+  <xs:element name="flow" type="xs:double" />
+  <!-- shape is a list of x,y coords separated by spaces -->
+  <xs:element name="shape" type="xs:string" />
+  <xs:element name="lat" type="xs:double" />
+  <xs:element name="lon" type="xs:double" />
+  <!-- definition of simple attributes -->
+  <xs:element name="nodeDesc" type="xs:string" />
+  <xs:element name="linkDesc" type="xs:string" />
+  <xs:element name="roadType" type="xs:string" />
+  <xs:complexType name="linkType">
+    <xs:annotation>
+      <xs:documentation>
+	Describes a link in the offline version of the map
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element ref="id" minOccurs="1" />
+      <xs:element ref="numLanes" minOccurs="1" />
+      <xs:element ref="length" minOccurs="1" />
+      <xs:element ref="maxSpeed" minOccurs="1" />
+      <xs:element ref="shape"/>
+	  <xs:element ref="linkDesc" minOccurs="1" />
+	  <xs:element ref="roadType" minOccurs="1" />
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="linkInformationType">
+    <xs:annotation>
+      <xs:documentation>
+	Provides link information (traffic density, etc)
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element ref="id" minOccurs="1" />
+      <!--
+	  co2 emissions as calculated by SUMO
+	  http://sumo.sourceforge.net/doc/current/docs/
+	  userdoc/Simulation/Models/Emissions/HBEFA-based.html
+      -->
+      <xs:element ref="co2emissions" minOccurs="1" />
+      <!--
+	  density is defined as number of vehicles per meter
+	  i.e. the number of vehicles divided by segment length
+	  at the last step of the simulation
+
+	  Is it the same as in the following:
+	  Returns the occupancy in % for the last time 
+	  step on the given edge.
+      -->
+      <xs:element ref="density" minOccurs="1" />
+      <!--
+	  average speed is the speed of vehicles/ number of
+	  vehicles at the last time step of the simulation
+      -->
+      <xs:element ref="avgSpeed" minOccurs="1" />
+      <!--
+	  flow is number of cars per second. This means for us
+	  that we just report the number of cars on the street
+      -->
+      <xs:element ref="flow" minOccurs="1" />
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="linkPairType">
+    <xs:annotation>
+      <xs:documentation>
+	Denotes a from-to relationship between two links
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="idfrom" type="xs:string" />
+      <xs:element name="idto" type="xs:string" />
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="nodeType">
+    <xs:sequence>
+      <xs:element ref="id" />
+      <xs:element ref="nodeDesc" />
+      <xs:element name="linkPair" type="linkPairType" maxOccurs="unbounded" />
+	  <xs:element ref="lat" />
+	  <xs:element ref="lon" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="topologyMap">
+    <xs:annotation>
+      <xs:documentation>
+	Map element which includes topology information
+	(length, node-link relationships, etc)
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+	<xs:element name="name" type="xs:string" maxOccurs="1"
+		    minOccurs="1" />
+	<xs:element name="version" type="xs:positiveInteger"
+		    maxOccurs="1" minOccurs="1" />
+	<xs:element name="link" type="linkType" maxOccurs="unbounded" />
+	<xs:element name="node" type="nodeType" maxOccurs="unbounded" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="mapInformationType">
+    <xs:annotation>
+      <xs:documentation>
+	Map type which only includes link information for
+	online interaction
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="name" type="xs:string" maxOccurs="1"
+		  minOccurs="1" />
+      <xs:element name="version" type="xs:positiveInteger"
+		  maxOccurs="1" minOccurs="1" />
+      <xs:element name="link" type="linkInformationType"
+		  maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="updateRequest">
+    <xs:complexType>
+      <xs:sequence>
+	<xs:element name="id" type="xs:positiveInteger" />
+	<xs:element name="mapCommand">
+	  <xs:simpleType>
+	    <xs:restriction base="xs:string">
+	      <xs:enumeration value="NO_ACTION" />
+	      <xs:enumeration value="CLOSE_EDGE" />
+	      <xs:enumeration value="CHANGE_SPEED_LMT" />
+	    </xs:restriction>
+	  </xs:simpleType>
+	</xs:element>
+	<xs:element name="commandString" type="xs:string" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="updateResponse">
+    <xs:complexType>
+      <xs:all>
+	<xs:element name="id" type="xs:positiveInteger" />
+	<xs:element name="map" type="mapInformationType" />
+	<xs:element name="ok" type="xs:boolean" />
+	<xs:element name="extrastatus" type="xs:string" />
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  
+   <xs:complexType name="forecastIntervalType">
+	<xs:all>
+		<xs:element name="timeStart" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
+		<xs:element name="timeStop" type="xs:positiveInteger"  maxOccurs="1" minOccurs="1" />
+		<xs:element name="travelTime" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
+	</xs:all>
+  </xs:complexType>
+  
+  <xs:complexType name="linkForecastType">
+	<xs:sequence>
+	<xs:element ref="id" minOccurs="1" maxOccurs="1" />
+	<xs:element name="interval" type="forecastIntervalType" minOccurs="1" maxOccurs="unbounded" />
+	</xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="pathType">
+	<xs:sequence>
+	<xs:element ref="id" minOccurs="1" maxOccurs="unbounded" />
+	</xs:sequence>
+  </xs:complexType>
+  
+  
+  <xs:element name="forecastRequest">
+    <xs:complexType>
+	<xs:all>
+    <xs:element name="timeWindow" type="xs:positiveInteger" />
+	</xs:all>
+    </xs:complexType>
+  </xs:element>
+
+<xs:element name="forecastResponse">
+    <xs:complexType>
+	<xs:sequence>
+      <xs:element name="link" type="linkForecastType" minOccurs="1" maxOccurs="unbounded"/>
+	</xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  
+<xs:element name="userRequest">
+    <xs:complexType>
+	<xs:sequence>
+    <xs:element name="userId" type="xs:string" />
+	<xs:element name="origin" type="xs:string" />
+	<xs:element name="destination" type="xs:string" />
+	<xs:element name="path" type="pathType" />
+	</xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+<xs:element name="userResponse">
+	<xs:complexType>
+	<xs:sequence>
+    <xs:element name="userId" type="xs:string" minOccurs="1" />
+	</xs:sequence>
+	</xs:complexType>
+</xs:element>
+</xs:schema>

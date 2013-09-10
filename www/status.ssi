@@ -1,0 +1,33 @@
+<html>
+<head>
+</head>
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5/leaflet.css" />
+ <!--[if lte IE 8]>
+     <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5/leaflet.ie.css" />
+ <![endif]-->
+<body>
+ <div>
+  <form method="post" action="/status_post.yaws">
+    <p>
+      Traffic status info: 
+	  <select name="link" id="link">
+  </select>
+  </p>
+      <input type="submit" />
+    </div>
+  </form>
+  </div>
+<script>
+	var l = document.getElementById("link"); 
+	var options = %linkNames%;
+	var values = %linkIds%;
+	
+	for(var i = 0; i < options.length; i++) {
+		var el = document.createElement("option");
+		el.textContent = options[i] + " (" + values[i] + ")";
+		el.value = values[i];
+		l.appendChild(el);
+	} 
+</script>
+</body>
+</html>

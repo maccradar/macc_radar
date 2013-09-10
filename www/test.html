@@ -1,0 +1,30 @@
+<html>
+<head>
+<script type="text/javascript"
+  src="dygraphs/dygraph-combined.js"></script>
+</head>
+<body>
+<div id="graphdiv"></div>
+<script type="text/javascript">
+	var points = [["cf_b",1,0],
+				  ["cf_b",29.351999999999997,14.175999999999998],
+				  ["cf_b",57.70399999999999,28.351999999999997],
+				  ["cf_b",81.0,40],
+				  ["cf_e",6.102951763858891,0],
+				  ["cf_e",34.45495176385889,14.175999999999998],
+				  ["cf_e",62.80695176385889,28.351999999999997],
+				  ["cf_e",86.1029517638589,40]];
+	for(var i = 0; i<points.length; i++) {
+		if(points[i][0] == "cf_b") {
+			points[i][0] = points[i][1];
+			points[i][1] = points[i][2];
+			points[i][2] = null;
+		} else if(points[i][0] == "cf_e") {
+			points[i][0] = points[i][1];
+			points[i][1] = null;
+		}
+	}
+  g = new Dygraph(document.getElementById("graphdiv"),points, {labels: ["x", "cf_b", "cf_e"]});
+</script>	
+ </body>
+ </html>

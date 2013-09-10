@@ -1,0 +1,21 @@
+<erl>
+-compile(export_all).
+
+out(A) ->
+    Peer = case yaws_api:get_sslsocket(A#arg.clisock) of
+               {ok, SslSocket} ->
+                   ssl:peername(SslSocket);
+               _ ->
+                   inet:peername(A#arg.clisock)
+           end,
+
+    {ok,{IP,_}} = Peer,
+    A2=A#arg{state = [{ip, IP}]},
+    yaws_rpc:handler_session(A2, {?MODULE, kill}).
+
+
+
+kill([{ip, IP}] = _State, {call, kill_simulation, _Value} = _Request, Session) ->
+	[supervisor:terminate_child(vehicle_holon_sv, Child) || {_, Child,_,_} <- supervisor:which_children(vehicle_holon_sv)],
+	{true, 0, Session, {response,  "Simulation ended." }}.
+</erl>

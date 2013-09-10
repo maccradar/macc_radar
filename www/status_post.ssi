@@ -1,0 +1,80 @@
+<html>
+<script type="text/javascript"
+  src="dygraphs/dygraph-combined.js"></script>
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5/leaflet.css" />
+ <!--[if lte IE 8]>
+     <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5/leaflet.ie.css" />
+ <![endif]-->
+ <body>
+ <h1>Status info of %linkName%</h1>
+ <div id="cfs"></div>
+ <label><input type='checkbox' onclick = 'refresh(this);'> Auto refresh</label>
+ <label><input type='checkbox' onclick = 'show_history(this);'> Show history</label>
+ <div id="history"></div>
+ <script>
+ //Server side events for status updates
+    var refresh_source = "";
+	var history_source = "";
+	
+	function refresh(cb) {
+		if(cb.checked) {
+			var l = window.btoa("%link%");
+			refresh_source = new EventSource("/cfs/"+l);
+			refresh_source.onmessage = function(event) {
+				var p = convertPoints(event.data);
+				var h = new Dygraph(document.getElementById("cfs"),p, {labels: ["x", "cf_b", "cf_e"]});
+				
+			};
+		}
+		else {
+			refresh_source.close();
+		}
+	};
+	
+	function show_history(cb) {
+		var history = document.getElementById("history");
+		if(cb.checked) {
+			var l = window.btoa("%link%");
+			history.innerHTML="";
+			var header = document.createElement("h2");
+			header.textContent = "History";
+			history.appendChild(header);
+			history_source = new EventSource("/history/"+l);
+			history_source.onmessage = function(event) {
+				//var img=document.createElement("img");
+				//img.src="data:binary;base64, " + event.data;
+				var div = document.createElement("div");
+				var g = new Dygraph(div,convertPoints(event.data), {labels: ["x", "cf_b", "cf_e"]});
+				history.appendChild(div);
+			};
+			history.style.display = 'block';
+		}
+		else {
+			history_source.close();
+			history.style.display = 'none';
+		}
+	};
+	
+	var points = convertPoints('%points%');
+	
+	var g = new Dygraph(document.getElementById("cfs"),points, {labels: ["x", "cf_b", "cf_e"]});
+	
+	function convertPoints(encpoints) {
+		var p = window.atob(encpoints);
+		var points = eval(p);
+		for(var i = 0; i<points.length; i++) {
+			if(points[i][0] == "cf_b") {
+				points[i][0] = points[i][1];
+				points[i][1] = points[i][2];
+				points[i][2] = null;
+			} else if(points[i][0] == "cf_e") {
+				points[i][0] = points[i][1];
+				points[i][1] = null;
+			}
+		}
+		return points;
+	};
+	
+</script>
+ </body>
+ </html>

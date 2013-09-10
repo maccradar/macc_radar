@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<updateResponse>
+    <id>1</id>
+    <map>
+        <name>gridMap</name>
+        <version>1</version>
+        <link>
+            <id>link0</id>
+            <co2emissions>1.000000e+00</co2emissions>
+            <density>1.000000e+00</density>
+            <avgSpeed>20</avgSpeed>
+			<flow>10</flow>
+        </link>
+        <link>
+            <id>link2</id>
+            <co2emissions>1.000000e+00</co2emissions>
+            <density>1.000000e+00</density>
+            <avgSpeed>10</avgSpeed>
+			<flow>10</flow>
+        </link>
+    </map>
+    <ok>true</ok>
+    <extrastatus>Nothing</extrastatus>
+</updateResponse>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<userRequest>
+    <userId>user1</userId>
+	<origin>link0</origin>
+	<destination>linkn</destination>
+	<path>
+		<id>link0</id>
+		<id>link1</id>
+		<id>link2</id>
+		<id>linkn</id>
+	</path>
+</userRequest>

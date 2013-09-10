@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<forecastResponse>
+    <link>
+        <id>link0</id>
+		<interval>
+			<timeStart>0</timeStart>
+			<timeStop>100</timeStop>
+			<travelTime>50</travelTime>
+		</interval>
+		<interval>
+			<timeStart>100</timeStart>
+			<timeStop>200</timeStop>
+			<travelTime>20</travelTime>
+		</interval>
+    </link>
+    <link>
+        <id>link1</id>
+		<interval>
+			<timeStart>0</timeStart>
+			<timeStop>100</timeStop>
+			<travelTime>50</travelTime>
+		</interval>
+		<interval>
+			<timeStart>100</timeStart>
+			<timeStop>200</timeStop>
+			<travelTime>20</travelTime>
+		</interval>
+    </link>
+</forecastResponse>
