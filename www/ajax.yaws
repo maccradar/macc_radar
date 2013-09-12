@@ -11,11 +11,24 @@ out(A) ->
 
     {ok,{IP,_}} = Peer,
     A2=A#arg{state = [{ip, IP}]},
-    yaws_rpc:handler_session(A2, {?MODULE, kill}).
+    yaws_rpc:handler_session(A2, {?MODULE, callback}).
 
-
-
-kill([{ip, IP}] = _State, {call, kill_simulation, _Value} = _Request, Session) ->
+callback([{ip, IP}] = _State, {call, forecasts, Value} = _Request, Session) ->
+	{array,[Time,{array, Roads}]} = Value,
+	LinkIds = lists:flatten(lists:map(fun(Road) -> modum_proxy:get_links_of_type(Road) end,Roads)),
+	F = fun(LinkId) ->
+		LinkId ! {get_density, Time, discrete, self()},
+		Data = 
+			receive
+				{density, LinkId, {Coordinates,Density}} -> 
+					[[[L1,L2] || {L1,L2} <- Coordinates],Density]					
+			after 5000 -> io:format("Did not receive density for link ~w!~n", [LinkId]), undefined
+			end,
+		Data
+	end,
+	Densities = lists:map(F, LinkIds),
+	{true, 0, Session, {response, {array, Densities}}};
+callback([{ip, IP}] = _State, {call, kill_simulation, _Value} = _Request, Session) ->
 	[supervisor:terminate_child(vehicle_holon_sv, Child) || {_, Child,_,_} <- supervisor:which_children(vehicle_holon_sv)],
 	{true, 0, Session, {response,  "Simulation ended." }}.
 </erl>

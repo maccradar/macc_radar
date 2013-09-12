@@ -67,8 +67,8 @@ start_time(TE,CF_B,CF_E)->
 		_ -> ?undefined
 	end.
 
-nbr_vehicles(TB,CF_B,CF_E)->
-	cumulative_func:x_y(TB, CF_B)-cumulative_func:x_y(TB, CF_E).
+nbr_vehicles(TimeBegin,CF_B,CF_E)->
+	cumulative_func:x_y(TimeBegin, CF_B)-cumulative_func:x_y(TimeBegin, CF_E).
 
 
 filter_cumulative(CF,Delta)->

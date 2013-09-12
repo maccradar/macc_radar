@@ -287,9 +287,9 @@ handle_info({subscribe, get_density, Interval, repeat, Receiver}, LB) ->
 handle_info({get_info, Pid},  LB=#linkBeing{state=#linkState{id=Id}}) ->
 	Pid ! {info, Id, LB},
 	{noreply, LB};
-handle_info({get_density, current, discrete, Pid}, LB=#linkBeing{state=#linkState{id=Id, density=Density, coordinates=Coordinates}}) ->
-	
-	Pid ! {density, Id, {Coordinates,1}},
+handle_info({get_density, Time, discrete, Pid}, LB=#linkBeing{state=#linkState{id=Id, density=Density, coordinates=Coordinates}}) ->
+	random:seed(erlang:now()),
+	Pid ! {density, Id, {Coordinates,random:uniform(3)}},
 	{noreply, LB};
 % default callback for messages.
 handle_info(Message, S) ->
