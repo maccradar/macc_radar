@@ -67,6 +67,9 @@ start_time(TE,CF_B,CF_E)->
 		_ -> ?undefined
 	end.
 
+	
+nbr_vehicles(_TimeBegin, CF_B, CF_E) when (CF_B == ?undefined) or (CF_E == ?undefined) ->
+	0;
 nbr_vehicles(TimeBegin,CF_B,CF_E)->
 	cumulative_func:x_y(TimeBegin, CF_B)-cumulative_func:x_y(TimeBegin, CF_E).
 

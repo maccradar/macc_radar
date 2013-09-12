@@ -218,7 +218,7 @@ x_y(X, F = #func{x_y =X_Y})->
 	case gb_trees:lookup(X, X_Y) of
 		{value,S} -> min(line_segment:x_y(X, S),line_segment:get(y2, S));
 		none -> case tree_utils:prev(X_Y, X) of
-					{_,S}->min(line_segment:x_y(X, S),line_segment:get(y2, S));
+					{_,S}->min(line_segment:x_y(X, S),line_segment:get(y2, S)); % minimum of y2 and 'undefined' if X > x2 of segment.
 					nil -> line_segment:get(y1,first_segment(F))
 				end 
 	end.

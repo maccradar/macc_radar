@@ -289,6 +289,7 @@ handle_info({get_info, Pid},  LB=#linkBeing{state=#linkState{id=Id}}) ->
 	{noreply, LB};
 handle_info({get_density, Time, discrete, Pid}, LB=#linkBeing{state=#linkState{id=Id, density=Density, coordinates=Coordinates}}) ->
 	random:seed(erlang:now()),
+	io:format("bla"),
 	Pid ! {density, Id, {Coordinates,random:uniform(3)}},
 	{noreply, LB};
 % default callback for messages.
