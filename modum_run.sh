@@ -1,0 +1,1 @@
+erl +P 1000000 -pa deps/erlsom/ebin deps/yaws/ebin deps/ibrowse/ebin deps/xmlrpc/ebin deps/concurix_runtime/ebin deps/eplot/ebin deps/gproc/ebin apps/util/ebin apps/blackboard/ebin apps/modum_core/ebin -boot start_sasl -eval "application:start(util),application:start(blackboard),application:start(modum_core)" -env ERL_MAX_ETS_TABLES 40000
