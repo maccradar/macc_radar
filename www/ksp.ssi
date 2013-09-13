@@ -87,7 +87,7 @@
 			plus.name = "plus";
 			plus.type = "button";
 			plus.value = "+";
-			plus.onclick = function() { addSimRow(); showHideUpstream(upstream); };
+			plus.onclick = function() { addSimRow(sim.rows[sim.rows.length-1]); showHideUpstream(upstream); };
 			plusHeader.appendChild(plus);
 			var min = document.createElement("input");
 			min.name = "min";
@@ -95,7 +95,7 @@
 			min.value = "-";
 			min.onclick = function() { removeSimRow(); showHideUpstream(upstream); };
 			plusHeader.appendChild(min);
-			addSimRow();
+			addSimRow(null);
 			showHideUpstream(upstream);
 		}
 		else {
@@ -104,7 +104,15 @@
 		}
 	}
 	
-	function addSimRow() {
+	function addSimRow(previousRow) {
+		var previousEnd = "0";
+		if(previousRow != null) {
+			temp = document.createElement("div");
+			temp.innerHTML = previousRow.cells[3].innerHTML;
+			alert(previousRow.cells[3].innerHTML);
+			previousEnd = temp.firstChild;
+			alert(previousEnd);
+		}
 		var dataRow = sim.insertRow(sim.rows.length);
 		var nbrVehiclesData = dataRow.insertCell(0);
 		var vehicleTypeData = dataRow.insertCell(1);
@@ -137,7 +145,7 @@
 		start.type = "number";
 		start.min = "0";
 		start.max = "10000";
-		start.value = "0";
+		start.value = previousEnd;
 		startData.appendChild(start);
 		
 		var end = document.createElement("input");
@@ -145,7 +153,7 @@
 		end.type = "number";
 		end.min = "0";
 		end.max = "10000";
-		end.value = "10";
+		end.value = (parseInt(previousEnd)+10).toString();
 		endData.appendChild(end);
 		
 		var arrival = document.createElement("input");
