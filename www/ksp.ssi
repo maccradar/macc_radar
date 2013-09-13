@@ -145,7 +145,7 @@
 		end.type = "number";
 		end.min = "0";
 		end.max = "10000";
-		end.value = "0";
+		end.value = "10";
 		endData.appendChild(end);
 		
 		var arrival = document.createElement("input");
@@ -179,6 +179,6 @@
 	};
 
 </script>
-<script type="text/javascript" src="validatious/validatious-min.js"></script>  
+<script type="text/javascript" src="js/validatious/validatious-min.js"></script>  
 </body>
 </html>

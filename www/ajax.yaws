@@ -12,12 +12,13 @@ out(A) ->
     {ok,{IP,_}} = Peer,
     A2=A#arg{state = [{ip, IP}]},
     yaws_rpc:handler_session(A2, {?MODULE, callback}).
-
+	
 callback([{ip, IP}] = _State, {call, forecasts, Value} = _Request, Session) ->
-	{array,[Time,{array, Roads}]} = Value,
+	io:format("~p~n",[Value]),
+	{array,[{struct,[{"time", Time},{"roads", {array, Roads}}]}]} = Value,
 	LinkIds = lists:flatten(lists:map(fun(Road) -> modum_proxy:get_links_of_type(Road) end,Roads)),
 	F = fun(LinkId) ->
-		LinkId ! {get_density, Time, discrete, self()},
+		LinkId ! {get_density, list_to_integer(Time), discrete, self()},
 		Data = 
 			receive
 				{density, LinkId, {Coordinates,Density}} -> 

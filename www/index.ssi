@@ -17,7 +17,9 @@
 <div id="map" style="width: 600px; height: 400px"></div>
 	 <script src="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.js"></script>
   <script src="awesome-markers/dist/leaflet.awesome-markers.js"></script>
-    <script src="jsolait/jsolait.js"></script>
+	<script src="js/roadcolors.js"></script>
+	<script src="js/object_cache/object_cache.min.js"></script>
+	<script src="js/jsolait/jsolait.js"></script>
 	<script>		
 		var serviceURL = "ajax.yaws";
 		var methods = [ "forecasts" ];
@@ -25,11 +27,8 @@
 		var jsonrpc = imprt("jsonrpc");
 		var service = new jsonrpc.ServiceProxy(serviceURL, methods);
 		
-		function get_color(i) {
-			colors = ["#ffffff","#00ff00", "#ffff00", "#ff0000"];
-			return colors[i];
-		}
-
+		var ajax_cache = new ObjectCache(1000);
+		
 		function createRoute(latlon, color) {
                 var point, points = [];
                 for (var i=0; i< latlon.length; i++)
@@ -108,24 +107,42 @@
 		}
 	};
 			var estimation_time = 0;
-		function updateTime(time) {
-			var title = time.value / 60;
-			if(title == 0) 
-				document.getElementById("estimation").innerHTML = "Estimation of current traffic";
-			else
-				document.getElementById("estimation").innerHTML = "Estimation of traffic in " + title + " minutes.";
-			estimation_time = time.value;
+	function updateTime(time) {
+		var roads = ["primary", "trunk"];
+		var request = {time: time.value, roads: roads};
+		var title = time.value / 60;
+		if(title == 0) 
+			document.getElementById("estimation").innerHTML = "Estimation of current traffic";
+		else
+			document.getElementById("estimation").innerHTML = "Estimation of traffic in " + title + " minutes.";
+		estimation_time = time.value;
+		var routes = ajax_cache.get(request, 5*60*1000);
+		if(!routes) {
 			try {
-				var routes = service.forecasts(time.value, ["primary", "trunk"]);
-				routeLayer.clearLayers();
-				for(var i=0; i<routes.length;i++) {
-					routeLayer.addLayer(createRoute(routes[i][0],get_color(routes[i][1])));
+				service.forecasts(request, function(res, err) {
+					if (res) {
+						routes = res;
+						ajax_cache.put(request, routes);
+						updateLayers(routes);
+					} else if (err) {
+						alert(err);
+					}
 				}
+				);
+								
 			} catch(e) {
 				alert(e);
 			}
-		}
+		} else
+			updateLayers(routes);
+	}
 	
+	function updateLayers(routes) {
+		routeLayer.clearLayers();
+		for(var i=0; i<routes.length;i++) {
+			routeLayer.addLayer(createRoute(routes[i][0],level_of_service[routes[i][1]]));
+		}
+	}
  </script>	
  <label><input type='checkbox' onclick = 'refresh(this);'> Auto refresh</label>
  <h2>Tools</h2>

@@ -1,6 +1,5 @@
 <html>
-<script type="text/javascript"
-  src="dygraphs/dygraph-combined.js"></script>
+<script type="text/javascript" src="js/dygraphs/dygraph-combined.js"></script>
 <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5/leaflet.css" />
  <!--[if lte IE 8]>
      <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5/leaflet.ie.css" />

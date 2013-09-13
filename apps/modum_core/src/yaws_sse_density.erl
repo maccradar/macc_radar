@@ -99,7 +99,6 @@ handle_info(tick, #state{sock=Socket, road_types=RoadTypes}=State) ->
 		Data
 	end,
 	Densities = lists:map(F, LinkIds),
-	io:format("densities: ~p~n", [Densities]),
 	P = base64:encode_to_string(lists:flatten(io_lib:format("~p",[Densities]))),
 	Data = yaws_sse:data(P),
 	case yaws_sse:send_events(Socket, Data) of

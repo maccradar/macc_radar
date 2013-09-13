@@ -86,10 +86,8 @@ handle_info({discard, _YawsPid}, State) ->
     %% nothing to do
     {stop, normal, State};
 handle_info(tick, #state{sock=Socket, paths=Paths}=State) ->
-	io:format("Paths: ~p~n",[Paths]),
 	Intentions = [0.40, 0.35, 0.25],
 	P = base64:encode_to_string(lists:flatten(io_lib:format("~p",[Intentions]))),
-	io:format("Sending intentions~w~n",[P]),
 	Data = yaws_sse:data(P),
 	case yaws_sse:send_events(Socket, Data) of
         ok ->
