@@ -22,7 +22,7 @@
 <div id="routeList"></div>
  <script src="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.js"></script>
   <script src="awesome-markers/dist/leaflet.awesome-markers.js"></script>
-  <script src="jsolait/jsolait.js"></script>
+  <script src="js/jsolait/jsolait.js"></script>
 	<script>
 var serviceURL = "ajax.yaws";
 var methods = [ "kill_simulation" ];

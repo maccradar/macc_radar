@@ -287,9 +287,13 @@ handle_info({subscribe, get_density, Interval, repeat, Receiver}, LB) ->
 handle_info({get_info, Pid},  LB=#linkBeing{state=#linkState{id=Id}}) ->
 	Pid ! {info, Id, LB},
 	{noreply, LB};
-handle_info({get_density, current, discrete, Pid}, LB=#linkBeing{state=#linkState{id=Id, density=Density, coordinates=Coordinates}}) ->
-	
-	Pid ! {density, Id, {Coordinates,1}},
+handle_info({get_density, 0, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD},state=#linkState{id=Id, density=Density, coordinates=Coordinates}}) ->
+	Pid ! {density, Id, {Coordinates,density_to_level_of_service(Density, fundamental_diagram:kjam(FD))}},
+	{noreply, LB};
+handle_info({get_density, Time, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD}, blackboard=#blackboard{cf_b = CF_B, cf_e = CF_E}, state=#linkState{length=L, id=Id, density=Density, coordinates=Coordinates}}) when L /= 0 ->
+	N = cumulative_flow:nbr_vehicles(util:timestamp(erlang:now())+Time,CF_B,CF_E),
+	D = density_to_level_of_service(N/L,fundamental_diagram:kjam(FD)),
+	Pid ! {density, Id, {Coordinates,D}},
 	{noreply, LB};
 % default callback for messages.
 handle_info(Message, S) ->
@@ -313,6 +317,9 @@ terminate(Reason, S) ->
 % Internal Functions %
 %%%%%%%%%%%%%%%%%%%%%%
 
+density_to_level_of_service(Density, KJam) ->
+	round(100*(1 - Density / KJam)).
+	
 %% execution of models
 execution({execute, #scenario{timeSlot={Time,_}}, SenderId}, LB=#linkBeing{state=#linkState{id=_Id},models=M}) ->
     ET =(M#models.ttm)(Time,LB),

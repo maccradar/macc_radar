@@ -80,8 +80,7 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info({ok, YawsPid}, State) ->
-    {ok, Timer} = timer:send_after(1, self(), tick),
-	% {ok, Timer} = timer:send_interval(300000, self(), tick), % send history update every five minutes
+	{ok, Timer} = timer:send_interval(300000, self(), tick), % send history update every five minutes
     {noreply, State#state{yaws_pid=YawsPid, timer=Timer}};
 handle_info({discard, _YawsPid}, State) ->
     %% nothing to do
@@ -89,7 +88,6 @@ handle_info({discard, _YawsPid}, State) ->
 handle_info(tick, #state{sock=Socket, link_id=LinkId}=State) ->
     io:format("Sending history for ~w~n",[LinkId]),
 	Points = link_holon:get_history(points, LinkId, void),
-	io:format("points in history: ~p~n",[Points]),
 	Fun = fun(D) -> 
 		spawn( fun() ->
 			%IMG = base64:encode_to_string(D),
