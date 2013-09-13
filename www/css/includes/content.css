@@ -1,0 +1,141 @@
+/***********************/
+/* content base styles */
+/***********************/
+
+/* right panel - two panes */
+div.content_two div.pane_two h3{
+	padding: 30px 0 10px 0;
+	margin: 0px;
+	
+	color: #fff;
+	
+	font-size: 22px;
+	font-weight: normal;
+	line-height: 22px;
+	text-transform: uppercase;
+}
+
+/* headlines home */
+div.content_home h1{
+	padding: 8px 0 0 20px;
+	margin: 10px 0 0 0;
+	height: 29px;
+	
+	background-color: #29ABE2;
+	color: #fff;
+	
+	line-height: 24px;
+	font-size: 18px;
+	font-weight: normal;
+	text-transform: uppercase;
+}
+div.content_home h2{
+	padding: 15px 0 0 0;
+	margin: 0px;
+	
+	color: #0071BC;
+	
+	font-size: 22px;
+	font-weight: normal;
+	line-height: 24px;
+	text-transform: uppercase;
+}
+
+/* headlines standard */
+div.content_std h1{
+	padding: 25px 0 15px 0;
+	margin: 0px;
+	
+	color: #0071BC;
+	
+	font-size: 22px;
+	font-weight: normal;
+	line-height: 24px;
+	text-transform: uppercase;
+}
+div.content_std h2{
+	padding: 15px 0 0 0;
+	margin: 0px;
+	
+	color: #0071BC;
+	
+	font-size: 18px;
+	font-weight: normal;
+	line-height: 20px;
+}
+div.content_std h1 + h2{
+	padding: 0;
+}
+
+/* paragraph */
+div.content_wrapper p{
+	padding: 0px;
+	margin: 10px 0;
+}
+div.content_home div.content_two div.pane_one p{
+	margin: 0px;
+}
+div.content_wrapper div.content_two div.pane_two div.bottom p{
+	margin: 10px 0 0 0;
+}
+
+/* link */
+div.content_home a{
+	padding: 0 0 0 10px;
+	
+	color: #0071BC;
+	background: url(../images/bg_std_link.gif) no-repeat 0px 5px;
+	
+	font-size: 13px;
+	text-decoration: none;
+}
+div.content_wrapper a{
+	color: #0071BC;
+	font-size: 13px;
+	text-decoration: none;
+}
+div.content_wrapper a:hover{
+	text-decoration: underline;
+}
+
+/* resize font */
+div.font-resizer{
+	position: absolute;
+	top: 136px;
+	margin: 0 0 0 830px;
+}
+div.font-resizer span{
+	display: block;
+	float: left;
+}
+div.font-resizer div{
+	float: left;
+	padding: 0 0 0 8px;
+	cursor: pointer;
+}
+
+/* newsletter */
+div.newsletter input[type=text]{
+  border: none;
+  padding: 3px 4px;
+}
+div.newsletter input[type=submit]{
+  border: none;
+  padding: 4px 10px;
+}
+div.newsletter div.message_success,
+div.newsletter div.message_error{
+  padding: 5px 10px 5px;
+  margin: 0 0 10px;
+  width: 200px;
+}
+div.newsletter div.message_success{
+  background: #dbfcd9;
+  color: #097202;
+  border: 1px solid #097202;
+}
+div.newsletter div.message_error{
+  background: #fcd9d9;
+  color: #c00;
+  border: 1px solid #c00;
+}

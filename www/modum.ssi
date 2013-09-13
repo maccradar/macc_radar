@@ -1,17 +1,13 @@
- 
-  <link rel="shortcut icon" href="http://www.modum-project.eu/images/favicon.ico" type="image/x-icon" />
+<link rel="shortcut icon" href="css/images/favicon.ico" type="image/x-icon" />
+<link rel="stylesheet" type="text/css" href="css/includes/styles.css" />
 
-  <link rel="stylesheet" type="text/css" href="http://www.modum-project.eu/includes/styles.css" />
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+<script type="text/javascript" src="http://www.modum-project.eu/js/jquery.cookie.js"></script>
 
-  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
-  <script type="text/javascript" src="http://www.modum-project.eu/js/jquery.cookie.js"></script>
-
-  <link rel="stylesheet" type="text/css" href="http://www.modum-project.eu/css/slimbox2.css" media="screen" />
-  <script type="text/javascript" src="http://www.modum-project.eu/js/slimbox2.js"></script>
-	
-		
-		<script type="text/javascript" src="http://www.modum-project.eu/js/modum.js"></script>
+<link rel="stylesheet" type="text/css" href="css/slimbox2.css" media="screen" />
+<script type="text/javascript" src="js/slimbox2.js"></script>
+<script type="text/javascript" src="js/modum.js"></script>
 	<!--[if IE]>
 		<link rel="stylesheet" type="text/css" href="http://www.modum-project.eu/includes/ie.css" media="screen">
 	<![endif]-->

@@ -1,0 +1,83 @@
+/*********************/
+/* content templates */
+/*********************/
+
+/* home template and standard template */
+/* two panes */
+div.content_home div.content_two,
+div.content_std div.content_two{
+	overflow: auto;
+}
+div.content_home div.content_two div.pane_one,
+div.content_std div.content_two div.pane_one{
+	width: 478px;
+	float: left;
+	text-align: justify;
+}
+div.content_home div.content_two div.pane_two{
+	padding: 0 20px;
+	width: 217px;
+	min-height: 328px;
+	float: right;
+	background-color: #0071BC;
+	color: #fff;
+	text-align: justify;
+}
+div.content_std div.content_two div.pane_two{
+	width: 257px;
+	float: right;
+}
+div.content_std div.content_two div.pane_two div.top{
+	padding: 0 20px;
+	width: 217px;
+	min-height: 328px;
+	background-color: #0071BC;
+	color: #fff;
+	text-align: justify;
+}
+div.content_home div.content_two div.pane_two a,
+div.content_std div.content_two div.pane_two a{
+	padding: 0 0 0 10px;
+	color: #fff;
+	background: url(../images/bg_right_link.gif) no-repeat 0px 5px;
+}
+
+/* home template, three panes */
+div.content_home div.content_three{
+	overflow: auto;
+	margin: 10px 0 0 0;
+	text-align: justify;
+}
+div.content_home div.content_three div.pane_one,
+div.content_home div.content_three div.pane_two{
+	padding: 0 10px 0 20px;
+	width: 215px;
+	float: left;
+}
+div.content_home div.content_three div.pane_three{
+	padding: 0 20px 0 0;
+	width: 215px;
+	float: right;
+}
+
+/* partner */
+table.partner{
+	border-collapse: collapse;
+}
+table.partner td{
+	padding: 0 60px 20px 0;
+}
+
+/* newsletter */
+div.content_std div.content_two div.newsletter div.top{
+  min-height: 100px;
+}
+div.content_std div.content_two div.newsletter div.bottom{
+  margin-top: 10px;
+  padding: 0 20px 30px;
+	width: 217px;
+	float: right;
+	background-color: #0071BC;
+	color: #fff;
+	text-align: justify;
+}

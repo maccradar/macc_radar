@@ -1,0 +1,81 @@
+div.feedbackPanel {
+    max-height: 104px;
+    overflow-y: auto;
+}
+ul.feedbackPanel {
+    margin: 0px;
+    white-space: nowrap;
+}
+ul.feedbackPanel li {
+    white-space: nowrap;
+}
+.feedbackInfoPanel, .feedbackErrorPanel, .feedbackWarningPanel {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    margin: 2px auto 14px;
+}
+.feedbackInfoPanel {
+    background-color: #F4FDEF;
+    border: 1px solid #ACDFA7;
+    color: #384F34; 
+    font-weight: bold;    
+}
+.feedbackErrorPanel {
+    background-color: #FDD;
+    border: 1px solid #F00;
+    font-weight: bold;  
+}
+.feedbackWarningPanel {
+    background-color: #FEF1BC;
+    border: 1px solid #FC0;
+    font-weight: bold;  
+}
+
+
+.listView table {
+    border-left:1px solid black;
+    border-right:1px solid black;    
+    border-collapse:collapse;
+    color:#555555;
+}
+.listView table label {
+    white-space: nowrap;
+}
+.listView thead {
+    background-color: #E5ECEF;
+    border-top:1px solid black;
+    border-bottom:1px solid black;
+    border-collapse:collapse;
+}
+.listView thead th {
+    padding: 4px 8px 4px 4px;
+    text-align: left;
+    color: #0071bc;
+}
+.listView tr {
+    color: black;
+    height: 20px;
+}
+.listView tr a {
+	display: inline-block;
+}
+.listView tr a:HOVER {
+    text-decoration: none;
+}
+.listView tr.odd {
+    background-color: #F7FBFC;
+}
+.listView tr:HOVER {
+    background-color: #EDEFEF;
+    cursor: pointer;
+}
+.listView td {
+    padding-left: 5px;
+}
+.listView th p,
+.listView td p {
+	margin: 0px;
+	padding-top: 0px;
+	padding-bottom: 0px;
+}
+

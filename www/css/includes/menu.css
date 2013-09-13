@@ -1,0 +1,110 @@
+/********/
+/* menu */
+/********/
+
+/* main menu */
+/* footer menu new */
+div.content_wrapper div.main_menu ul{
+	padding: 0px;
+	margin: 30px 0 130px 23px;
+}
+div.content_wrapper div.footer_menu ul{
+	position: absolute;
+	bottom: 30px;
+	padding: 0px;
+	margin: 0 0 0 23px;
+}
+div.content_wrapper div.main_menu ul li,
+div.content_wrapper div.footer_menu ul li{
+	list-style-type: none;
+	padding: 0px;
+	margin: 0px;
+}
+
+div.content_wrapper div.main_menu ul ul{
+	padding: 0px;
+	margin: 0 0 0 13px;
+}
+
+div.content_wrapper div.main_menu a,
+div.content_wrapper div.footer_menu  a{
+	display: block;
+	
+	color: #4B4B4D;
+	background: url(../images/bg_menupoint.gif) no-repeat 0px 9px;
+	
+	font-size: 13px;
+	text-decoration: none;
+}
+
+/* spacings */
+div.content_wrapper div.main_menu ul a,
+div.content_wrapper div.footer_menu ul a{
+	width: 169px;
+	padding: 3px 10px 3px 10px;
+}
+div.content_wrapper div.main_menu ul  ul a{
+	width: 156px;
+	padding: 3px 10px 3px 10px;
+}
+div.content_wrapper div.main_menu ul  ul li a.last{
+	padding-bottom: 10px;
+}
+
+/* over, active links */
+div.content_wrapper div.main_menu a:hover, 
+div.content_wrapper div.main_menu li.parent > a,
+div.content_wrapper div.footer_menu a:hover,
+div.content_wrapper div.footer_menu li.parent > a{
+	color: #29ABE2;
+}
+div.content_wrapper div.main_menu li.active > a,
+div.content_wrapper div.footer_menu li.active > a{
+	color: #0071BC;
+}
+
+
+/* breadcrumb menu */
+/* footer menu (old) 
+div.footer_menu{
+	padding: 0px;
+	margin: 5px 0 0 0;
+	width: 200px;
+	float: right;
+}*/
+div#breadcrumbs{
+	color: #000;
+	padding: 0px;
+	margin: 5px 0 0 0;
+	width: 700px;
+	float: left;
+}
+div.footer ul{
+	padding: 0px;
+	margin: 0px;
+	float: right;
+}
+div.footer ul li{
+	list-style-type: none;
+	padding: 0px;
+	margin: 0px;
+	float: left;
+}
+div.footer a{
+	padding: 0 10px;
+	background: url(../images/sep_footer_menu.gif) no-repeat top right;
+	color: #808080;
+	text-decoration: none;
+}
+div#breadcrumbs a{
+	padding: 0px;
+	background: none;
+}
+div.footer a.last{
+	padding: 0 0 0 10px;
+	background: none;
+}
+div.footer a:hover,
+div.footer li.active a{
+	color: #000;
+}

@@ -1,0 +1,46 @@
+div.search form.search_form input{
+	width: 363px;
+	padding: 4px;
+	border: 1px solid #ccc;
+}
+div.search form.search_form input[type=submit]{
+	border: 1px solid #aaa;
+	width: 100px;
+	padding: 3px 4px;
+}
+
+div.search div.error{
+	border: 1px solid #c00;
+	color: #c00;
+	padding: 10px 5px 8px 5px;
+	margin: 20px 0;
+	background-color: #F1DADD;
+	font-weight: bold;
+}
+div.search div.success{
+	border: 1px solid #036005;
+	color: #036005;
+	padding: 10px 5px 8px 5px;
+	margin: 20px 0;
+	background-color: #A3DCA2;
+	font-weight: bold;
+}
+
+div.search div.first_result{
+	border-bottom: 1px solid #ccc;
+	margin: 0 0 10px 0;
+}
+div.search div.next_result{
+	margin: 0 0 10px 0;
+	border-bottom: 1px solid #ccc;
+	padding: 10px 0 0 0;
+}
+div.search a{
+	display: block;
+	margin: 10px 0 0 0;
+	padding: 0px;
+}
+div.search span.found{
+	font-weight: bold;
+	background-color: #FDFCD3;
+}
