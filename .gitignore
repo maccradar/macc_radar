@@ -3,7 +3,7 @@
 #################
 deps/
 apps/modum_core/src/modum_core.app.src
-ebin/
+*/ebin/
 
 
 #################
