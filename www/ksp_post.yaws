@@ -77,7 +77,7 @@ out(A) ->
 	OName = node_holon:get_description(list_to_atom(O)),
 	DName = node_holon:get_description(list_to_atom(D)),
 	Ls = lists:flatten(io_lib:format("~p", [Lengths])),
-	[{ssi,"modum.ssi","%",[]},{ssi,"ksp_post.ssi", "%",[{"paths", base64:encode_to_string(lists:flatten(io_lib:write(Paths)))}, {"names", Names}, {"routes", Routes}, {"lengths", Ls}, {"ids", Ids}, {"k",K}, {"oid", O}, {"did", D}, {"oname", OName}, {"dname", DName},{"origin",Origin},{"destination",Destination}]}].
+	[{ssi,"modum.ssi","%",[]},{ssi,"header.ssi", "%", [{"title", "MECA KU Leuven KSP Result"}]},{ssi,"ksp_post.ssi", "%",[{"paths", base64:encode_to_string(lists:flatten(io_lib:write(Paths)))}, {"names", Names}, {"routes", Routes}, {"lengths", Ls}, {"ids", Ids}, {"k",K}, {"oid", O}, {"did", D}, {"oname", OName}, {"dname", DName},{"origin",Origin},{"destination",Destination}]},{ssi,"footer.ssi", "%", []}].
 
 simulate_traffic([V | Vs], [T | Ts], [S | Ss], [E | Es], [_A | As], O, D, K, no_upstream) ->
 	io:format("Simulating ~w vehicles of type ~w and departing from ~w to ~w between ~w and ~w.~n", [V, T, O, D, S, E]),
@@ -91,7 +91,7 @@ simulate_traffic([],[],[],[],[], _O,_D,_K,_) ->
 	io:format("Finished initialization of vehicles.~n",[]).
 	
 id_to_lat_lon(Id) ->
-	{Lat, Lon} = node_holon:get_coordinates(Id),
+	[{Lat, Lon}] = node_holon:get_coordinates(Id),
 	[Lat, Lon].
 	
 odds(L) -> 

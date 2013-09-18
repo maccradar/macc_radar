@@ -1,4 +1,3 @@
- <body>
  <h1>Status info of %linkName%</h1>
  <div id="cfs"></div>
  <label><input type='checkbox' onclick = 'refresh(this);'> Auto refresh</label>
@@ -69,5 +68,3 @@
 	};
 	
 </script>
- </body>
- </html>

@@ -92,7 +92,7 @@ handle_info(tick, #state{sock=Socket, road_types=RoadTypes}=State) ->
 		LinkId ! {get_density, current, discrete, self()},
 		Data = 
 			receive
-				{density, LinkId, {Coordinates,Density}} -> 
+				{density, LinkId, {Coordinates,Density}} -> 	
 					[[[L1,L2] || {L1,L2} <- Coordinates],Density]					
 			after 5000 -> io:format("Did not receive density for link ~w!~n", [LinkId]), undefined
 			end,

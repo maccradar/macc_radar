@@ -83,15 +83,25 @@ shift_item_backwards({Bucket,Size},[Next_Bucket|Tail],ACC) when Size=/=0-> %%TOD
 	Bucket_update = list_bucket:enter(Key, Val, Bucket),
 	shift_item_backwards({Next_bucket_update,list_bucket:size(Next_bucket_update)},Tail, [Bucket_update|ACC]).
 
+% replace_item(Buckets,OldTime,NewTime,OldKey,NewKey,Value)->
+	% {Head,Bucket,Tail} = get_bucket(Buckets,fun(Bucket) ->{OldTime,OldKey}=<element(1,list_bucket:largest(Bucket)) end),
+	% case {list_bucket:smallest(Bucket),list_bucket:largest(Bucket)} of
+		% {From,To} when ((NewTime >= From) and (NewTime =< To )) -> 	New_Bucket = list_bucket:delete({OldTime,OldKey}, Bucket),
+																	% list_bucket:enter({NewTime,NewKey},Value,New_Bucket);
+		% _ ->remove_item(Buckets,OldTime,OldKey),
+			% add_item(Buckets,NewTime,NewKey,Value)
+	% end.
 replace_item(Buckets,OldTime,NewTime,OldKey,NewKey,Value)->
 	{Head,Bucket,Tail} = get_bucket(Buckets,fun(Bucket) ->{OldTime,OldKey}=<element(1,list_bucket:largest(Bucket)) end),
 	case {list_bucket:smallest(Bucket),list_bucket:largest(Bucket)} of
-		{From,To} when ((NewTime >= From) and (NewTime =< To )) -> 	New_Bucket = list_bucket:delete({OldTime,OldKey}, Bucket),
-																	list_bucket:enter({NewTime,NewKey},Value,New_Bucket);
-		_ ->remove_item(Buckets,OldTime,OldKey),
-			add_item(Buckets,NewTime,NewKey,Value)
-	end.
-			
+		{From,To} when ((NewTime >= From) and (NewTime =< To )) ->  
+			BucketT1 = list_bucket:delete({OldTime,OldKey}, Bucket),
+			BucketT2 = list_bucket:enter({NewTime,NewKey},Value,BucketT1),
+			Head ++ [BucketT2|Tail];
+		_ ->BucketsTemp = remove_item(Buckets,OldTime,OldKey),
+			add_item(BucketsTemp,NewTime,NewKey,Value)
+end.
+		
 		
 add_item(Buckets,Time,Key,Value)->
 	{Head,Bucket,Tail} = get_bucket(Buckets,fun(Bucket) -> ((list_bucket:size(Bucket)=<?MAX_SIZE) or ({Time,Key}=<element(1,list_bucket:largest(Bucket)))) end),

@@ -126,7 +126,7 @@
 	connections			=[#connection{}]		::list(#connection{}),
 	shape				=[#point{}]				::list(#point{}),
 	capacities									::dict(),
-	coordinates			={?undefined,?undefined}::{float(),float()} % {lat, lon}
+	coordinates			=[]						::list({float(),float()}) % [{lat, lon}]
 }). 
 
 % defines the node being, containing the internal state and set of models used by the node holon.

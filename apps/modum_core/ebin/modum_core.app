@@ -19,7 +19,11 @@
                     {map,"modum_nottingham_map.xml"},
                     {xsd,"modum.xsd"},
                     {server,sim},
+<<<<<<< HEAD
                     {ip,{10,33,172,158}},
+=======
+                    {ip,{127,0,0,1}},
+>>>>>>> 9b65dbc923630a1501424416ab069e6317a439e3
                     {www_dir,"www/"},
                     {www_port,9000},
                     {user_request_port,9000},

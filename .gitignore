@@ -2,6 +2,7 @@
 ## Erlang
 #################
 deps/
+apps/src/modum_core/src/modum_core.app.src
 
 
 #################

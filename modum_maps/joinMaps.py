@@ -1,4 +1,19 @@
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET 
+
+def indent(elem, level=0):
+    i = "\n" + level*"  "
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + "  "
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+        for elem in elem:
+            indent(elem, level+1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
 
 def joinMaps(osm, xml, outputfile):
     print 'Parsing OSM data...'
@@ -6,6 +21,9 @@ def joinMaps(osm, xml, outputfile):
     print 'Done!'
     osmroot = osmtree.getroot()
     osmdict = {}
+    xmltree = ET.parse(xml)
+    xmlroot = xmltree.getroot()
+    
     print 'Creating node dictionary...'
     for osmnode in osmroot.iter('node'):
         osmdict[osmnode.get('id')]= osmnode.get('lat'), osmnode.get('lon')
@@ -17,13 +35,30 @@ def joinMaps(osm, xml, outputfile):
         rs = w.findall("./tag[@k='highway']")
         if len(ns) == 1 and len(rs) == 1:
             linkdict[w.get('id')]= ns[0].get('v'), rs[0].get('v')
+        if len(ns) == 0 and len(rs) == 1:
+            linkdict[w.get('id')]= rs[0].get('v')+ '_' + w.get('id'), rs[0].get('v')
+    print 'Done!'           
+    print len(linkdict)
+    gpsdict = {}
+    print 'Creating gps dictionary...'
+    for xmllink in xmlroot.iter('link'):
+        gps = xmllink.find('GPSshape').text
+        latlons = gps.split(' ')
+        lllist = []
+        for ll in latlons:
+            lon = ll.split(',')[0]
+            lat = ll.split(',')[1]
+            lllist.append((lat,lon))
+        gpsdict[xmllink.find('id').text] = lllist
     print 'Done!'
-    xmltree = ET.parse(xml)
-    xmlroot = xmltree.getroot()
+
+    print len(gpsdict)
+    
     print 'Looking up nodes...'
     for xmlnode in xmlroot.iter('node'):
-        latEl = ET.SubElement(xmlnode,'lat')
-        lonEl = ET.SubElement(xmlnode,'lon')
+        coordEl = ET.SubElement(xmlnode, 'coordinates')
+        latEl = ET.SubElement(coordEl,'lat')
+        lonEl = ET.SubElement(coordEl,'lon')
         nodeID = xmlnode.find('id').text            
         if nodeID.startswith('cluster'):
             nodeID = nodeID.split('_')[1]
@@ -53,19 +88,37 @@ def joinMaps(osm, xml, outputfile):
         xmlnode.find('nodeDesc').text = nodeDesc
     print 'Done!'
     for xmllink in xmlroot.iter('link'):
-        linkID = xmllink.find('id').text.split('#')[0].translate(None,'-')
+        origID = xmllink.find('id').text
+        linkID = origID.split('#')[0].translate(None,'-')
         descEl = ET.SubElement(xmllink, 'linkDesc')
         typeEl = ET.SubElement(xmllink, 'roadType')
-    
+        
         if linkdict.has_key(linkID):    
             descEl.text = linkdict[linkID][0]
             typeEl.text = linkdict[linkID][1]
         else:
             print 'Did not find link ' + linkID
             descEl.text = "unknown street"
+        
+        if gpsdict.has_key(origID):
+            for ll in gpsdict[origID]:
+                coordEl = ET.SubElement(xmllink, 'coordinates')
+                latEl = ET.SubElement(coordEl,'lat')
+                lonEl = ET.SubElement(coordEl,'lon')
+                latEl.text = ll[0]
+                lonEl.text = ll[1]
+        else:
+            print 'Did not find gps coord for link ' + origID
+            latEl = ET.SubElement(coordEl,'lat')
+            lonEl = ET.SubElement(coordEl,'lon')
+            latEl.text = "undefined"
+            lonEl.text = "undefined"
+            
     print 'Done!'
     print 'Writing output file...'
+    
+    indent(xmlroot)
     xmltree.write(outputfile)
     print 'Done!'
     
-joinMaps('nottinghamshire-justnottingham.osm', 'modum_nottingham_map.old','output.xml')
+joinMaps('nottinghamshire-justnottingham.osm', 'modum_nottingham_map.new', 'output.xml')

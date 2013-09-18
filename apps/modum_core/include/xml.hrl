@@ -5,6 +5,7 @@
 %% It is possible to add default values, but be aware that these will
 %% only be used when *writing* an xml document.
 
+-record('GPSshape', {anyAttribs, 'GPSshape'}).
 -record('roadType', {anyAttribs, 'roadType'}).
 -record('linkDesc', {anyAttribs, 'linkDesc'}).
 -record('nodeDesc', {anyAttribs, 'nodeDesc'}).
@@ -30,7 +31,8 @@
 -record('updateRequest', {anyAttribs, 'id', 'mapCommand', 'commandString'}).
 -record('mapInformationType', {anyAttribs, 'name', 'version', 'link'}).
 -record('topologyMap', {anyAttribs, 'name', 'version', 'link', 'node'}).
--record('nodeType', {anyAttribs, 'id', 'nodeDesc', 'linkPair', 'lat', 'lon'}).
+-record('coordinatesType', {anyAttribs, 'lat', 'lon'}).
+-record('nodeType', {anyAttribs, 'id', 'nodeDesc', 'linkPair', 'coordinates'}).
 -record('linkPairType', {anyAttribs, 'idfrom', 'idto'}).
 -record('linkInformationType', {anyAttribs, 'id', 'co2emissions', 'density', 'avgSpeed', 'flow'}).
--record('linkType', {anyAttribs, 'id', 'numLanes', 'length', 'maxSpeed', 'shape', 'linkDesc', 'roadType'}).
+-record('linkType', {anyAttribs, 'id', 'numLanes', 'length', 'maxSpeed', 'shape', 'GPSshape', 'linkDesc', 'roadType', 'coordinates'}).
