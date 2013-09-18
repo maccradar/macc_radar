@@ -42,5 +42,5 @@
 	io:format("Points: ~p~n",[Points]),
 	
 	LName = link_holon:get_description(list_to_atom(L)),
-	[{ssi,"modum.ssi", "%",[]},{ssi,"status_post.ssi", "%", [{"linkName", LName}, {"link", L}, {"points", Points}]}].
+	[{ssi,"modum.ssi", "%",[]},{ssi,"header.ssi", "%", [{"title", "MECA KU Leuven Status Result"}]},{ssi,"status_post.ssi", "%", [{"linkName", LName}, {"link", L}, {"points", Points}]},{ssi,"footer.ssi", "%", []}].
  </erl>

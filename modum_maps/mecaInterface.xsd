@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xs:schema version="1.0" targetNamespace="http://meca.protocol.mm/" xmlns:tns="http://meca.protocol.mm/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+<!-- 
+     InfoRequest is a asked of the MECAs (i.e. an RPC call to MECAs
+     running an RPC service. The call does not immediately return a
+     response
+-->
+  <xs:complexType name="mapInfoRequest" final="extension restriction">
+    <xs:sequence>
+      <!-- device ID is device UID or similar-->
+      <xs:element name="deviceId" type="xs:string"/>
+      <xs:element name="requestId" type="xs:int"/>
+      <xs:element name="timeStamp" type="xs:time"/>
+      <!--origin ID is lat, lon tuple -->
+      <xs:element name="originID" type="coordinatesType"/>
+      <!--destination ID is lat, lon tuple -->
+      <xs:element name="destinationID" type="coorinatesType"/>
+      <!--list of means of transport you want to use in your journey -->
+      <xs:element name="preferences" type="tns:preferenceList" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="lat" type="xs:double" />
+  <xs:element name="lon" type="xs:double" />
+  <xs:complexType name="coordinatesType">
+    <xs:all>
+		<xs:element ref="lat" />
+		<xs:element ref="lon" />
+	</xs:all>
+  </xs:complexType>
+<!-- 
+     InfoResponse is what is returned for each info request. The MECAs
+     will call a function at MobiMaestro to respond. Multiple
+     responses may happen in time as the user proceeds in her travels
+-->
+<xs:complexType name="mapInfoResponse" final="extension restriction">
+  <xs:sequence>
+    <!-- device ID is device UID or similar (same as in Request)-->
+    <xs:element name="deviceId" type="xs:string"/>
+    <xs:element name="requestId" type="xs:int"/>
+    <xs:element name="timeStamp" type="xs:time"/>
+    <xs:element name="suggestedRoute" type="tns:mapSegmentList" minOccurs="1" maxOccurs="3"/>
+    <xs:element name="summary" type="tns:summaryType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- user travel preferences -->
+<xs:complexType name="preferenceList" final="extension restriction">
+  <xs:sequence>
+    <xs:element name="departureTime" type="xs:datetime"/>
+    <xs:element name="arrivalTime" type="xs:datetime"/>
+    <xs:element name="preferredTransport" type="tns:modeTransportList"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- modes of transport to use (car, public transport etc) -->
+<xs:complexType name="modeTransportList" final="extensions restriction">
+  <xs:sequence>
+    <xs:element name="modeOfTransport" type="tns:transportType" />
+  </xs:sequence>
+</xs:complexType>
+
+<!-- summary of characteristics in recommended routes -->
+<xs:complexType name="summaryType" final="extensions restriction">
+  <xs:sequence>
+    <xs:element name="journeyTime" type="time" />
+    <xs:element name="co2" type="int" />
+    <xs:element name="trafficJam" type="int" minOccurs="0"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!--suggested route to use and mode of transport -->
+<xs:complexType name="mapSegmentList" final="extension restriction">
+  <xs:sequence>
+    <xs:element name="routeSegment" type="tns:mapSegmentCollection" minOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!--collection of segments that may make a complete route or part of it -->
+<xs:complexType name="mapSegmentCollection" final="extension restriction">
+  <xs:sequence>
+    <xs:element name="mapSegments" type="tns:segmentListType"/>
+    <!-- mode of transport to use for above segment id list-->
+    <xs:element name="modeOfTransport" type="tns:transportType" />
+  </xs:sequence>
+</xs:complexType>
+
+<!--List of road segments -->
+<xs:complexType name="segmentListType" final="extension restriction">
+  <xs:sequence>
+    <xs:element name="segmentId" type="xs:string" minOccurs="1" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:simpleType name="transportType">
+    <xs:restriction base="xs:string">
+        <xs:enumeration value="car"/>
+        <xs:enumeration value="train"/>
+        <xs:enumeration value="tram"/>
+        <xs:enumeration value="pedestrian"/>
+        <xs:enumeration value="bus"/>
+        <xs:enumeration value="unknown"/>
+    </xs:restriction>
+</xs:simpleType>
+
+</xs:schema> 

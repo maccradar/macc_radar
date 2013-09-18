@@ -174,7 +174,8 @@ init(Map, ProxyState=#proxyState{model=Model}) ->
 			lists:foreach(fun(Link)->supervisor:start_child(LSV, [Link]) end, Links),
 			{ok, VSV} = vehicle_holon_sv:start_link(simple),
 			U = atom_to_list(?undefined),
-			FilterN = [F || F <- Nodes, F#nodeState.coordinates /= {U,U}],
+			FilterN = [F || F <- Nodes, F#nodeState.coordinates /= [{U,U}]],
+			io:format("Filtered ~w nodes~n", [length(FilterN)]),
 			modum_proxy:create_graph({FilterN, Links}),
 			{ok, NSV, LSV, VSV};
 		{error, Error} ->
@@ -185,7 +186,7 @@ parse_map(MapData) ->
 	Links = MapData#topologyMap.link,
 	Nodes = MapData#topologyMap.node,
 	{NodeStates, _,_,Dict} = lists:foldl(
-		fun(#nodeType{id=Id, nodeDesc=Desc, linkPair=LP, lat=Lat, lon=Lon}, {NodeDict, NodeIn, NodeOut, LinkConnections}) -> 
+		fun(#nodeType{id=Id, nodeDesc=Desc, linkPair=LP, coordinates=Coords}, {NodeDict, NodeIn, NodeOut, LinkConnections}) -> 
 			LF =  lists:foldl(
 				fun(#linkPairType{idfrom=From, idto=To}, {ConnectionsList,LinkConnections2,Id1}) -> 
 					Id2 = Id1, % get_id(list_to_atom(From), list_to_atom(To), Id1),
@@ -195,12 +196,13 @@ parse_map(MapData) ->
 			{[#connection{from=list_to_atom(From), to=list_to_atom(To)} | ConnectionsList],LC2,Id2}
 					end,
 					{[],LinkConnections, list_to_atom(Id)}, LP),
-			  NewNode = #nodeState{id=element(3,LF), desc=Desc, connections=element(1,LF)++get_connections(element(3,LF),NodeIn,NodeOut), coordinates={Lat,Lon}},
+			  NewCoords = [{Lat,Lon} || #coordinatesType{lat=Lat, lon=Lon} <- Coords],
+			  NewNode = #nodeState{id=element(3,LF), desc=Desc, connections=element(1,LF)++get_connections(element(3,LF),NodeIn,NodeOut), coordinates=NewCoords},
 			  NewNodeDict = dict:store(element(3,LF),NewNode,NodeDict),
 			  {NewNodeDict, update_node(?node_in,NewNode,NodeIn), update_node(?node_out,NewNode,NodeOut),element(2,LF)}
 		end, {dict:new(), ?undefined, ?undefined, dict:new()}, Nodes),	
 	{LinkStates, FinalNodeDict} = lists:foldl(
-		fun(#linkType{id=Id, numLanes=Lanes, length=Length, maxSpeed=MaxSpeed, shape=ShapeString, linkDesc=Desc, roadType=RoadType}, {LinkList, NodeDict}) ->
+		fun(#linkType{id=Id, numLanes=Lanes, length=Length, maxSpeed=MaxSpeed, shape=ShapeString, linkDesc=Desc, roadType=RoadType, coordinates=Coords}, {LinkList, NodeDict}) ->
 			Shape = shape_to_points(ShapeString),
 			[FirstS | _] = Shape,
 			[LastS | _] = lists:reverse(Shape),
@@ -210,8 +212,9 @@ parse_map(MapData) ->
 			ToNode = dict:fetch({LinkId2,out}, Dict),
 			ToNS = dict:fetch(ToNode, NodeDict),
 			NewNodeDict1 = dict:store(FromNode,FromNS#nodeState{shape=[FirstS, FirstS]},NodeDict),
-			NewNodeDict2 = dict:store(ToNode, ToNS#nodeState{shape=[LastS, LastS]}, NewNodeDict1), 
-			{[#linkState{id=LinkId2, desc=Desc, numLanes=Lanes, length=list_to_float(Length), maxAllowedSpeed=list_to_float(MaxSpeed),connection=#connection{from=FromNode, to=ToNode}, shape=Shape, roadType=RoadType, coordinates=[FromNS#nodeState.coordinates,ToNS#nodeState.coordinates]} | LinkList], NewNodeDict2}
+			NewNodeDict2 = dict:store(ToNode, ToNS#nodeState{shape=[LastS, LastS]}, NewNodeDict1),
+			NewCoords = [{Lat,Lon} || #coordinatesType{lat=Lat, lon=Lon} <- Coords],
+			{[#linkState{id=LinkId2, desc=Desc, numLanes=Lanes, length=list_to_float(Length), maxAllowedSpeed=list_to_float(MaxSpeed),connection=#connection{from=FromNode, to=ToNode}, shape=Shape, roadType=RoadType, coordinates=NewCoords} | LinkList], NewNodeDict2}
 		end, {[], NodeStates}, Links),
 	io:format("Parsed ~B nodes and ~B links~n",[length(Nodes), length(LinkStates)]),
 	{[X || {_,X} <- dict:to_list(FinalNodeDict)],LinkStates}.

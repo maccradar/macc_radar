@@ -90,7 +90,7 @@
 	};
 			var estimation_time = 0;
 	function updateTime(time) {
-		var roads = ["primary", "trunk"];
+		var roads = ["trunk","primary","secondary","tertiary"];
 		var request = {time: time.value, roads: roads};
 		var title = time.value / 60;
 		if(title == 0) 
@@ -133,5 +133,3 @@
 <li><a href="ksp.yaws">Run traffic density simulation scenarios</a></li>
 <li><a href="status.yaws">Individual link status info</a></li>
 </ul>
-
-

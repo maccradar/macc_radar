@@ -35,5 +35,5 @@ out(A) ->
 	Names_Ids = lists:sort(lists:zip([link_holon:get_description(X) || X <- Links], [atom_to_list(X) || X <- Links])),
 	Names = [N || {N,_} <- Names_Ids],
 	Ids = [I || {_,I} <- Names_Ids],
-	[{ssi,"modum.ssi","%",[]},{ssi,"status.ssi", "%",[{"linkNames", lists:flatten(io_lib:format("~p", [Names]))}, {"linkIds", lists:flatten(io_lib:format("~p", [Ids]))}]}].
+	[{ssi,"modum.ssi","%",[]},{ssi,"header.ssi", "%", [{"title", "MECA KU Leuven Status"}]},{ssi,"status.ssi", "%",[{"linkNames", lists:flatten(io_lib:format("~p", [Names]))}, {"linkIds", lists:flatten(io_lib:format("~p", [Ids]))}]},{ssi,"footer.ssi", "%", []}].
  </erl>
