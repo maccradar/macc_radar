@@ -2,7 +2,6 @@
 ## Erlang
 #################
 deps/
-modum_core.app.src
 ebin/
 
 

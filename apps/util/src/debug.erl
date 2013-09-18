@@ -32,6 +32,8 @@
 %% Created: 17-mei-2012
 -module(debug).
 
+
+
 -export([wait/0]).
 
 wait() ->
