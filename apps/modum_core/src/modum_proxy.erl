@@ -157,7 +157,14 @@ handle_call({closest_node, {Lat,Lon}}, _From, State=#proxyState{nodes=Nodes}) ->
 	Dists = [{NodeId, node_holon:get_distance(NodeId, {Lat,Lon})} || NodeId <- Nodes],
 	{ClosestId, _Distance} = lists:foldl(fun({Id1,Dist}, {_Id,Min}) when Dist < Min -> {Id1,Dist}; (_,A) -> A end, {?undefined, ?inf}, Dists),
 	{reply, {?reply, closest_node, ClosestId}, State};
-	
+
+handle_call({check_consistency, nodes}, _From, State = #proxyState{nodes=Nodes}) ->
+	CheckFun = fun(NodeId) ->
+		{?reply, check_consistency, Check} = gen_server:call(NodeId,check_consistency),
+		Check
+	end,
+	Result = lists:all(CheckFun, Nodes),
+	{reply, {?reply, {check_consistency, nodes}, Result}, State};
 % default callback for synchronous calls.
 handle_call(_Message, _From, S) ->
     {noreply, S}.

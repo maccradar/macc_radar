@@ -42,6 +42,7 @@
 		 {include_dir, "apps/modum_core/include/"},
 		 {com_dir, "modum_maps/"},
 		 {map, "modum_nottingham_map.xml"},
+		 {turn_defs, "turnDefs_noUturns.xml"},
 		 {xsd, "modum.xsd"},
 		 {server,sim},
 		 {ip, {127,0,0,1}},

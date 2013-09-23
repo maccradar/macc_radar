@@ -80,8 +80,19 @@ init([NodeState]) ->
 	NodeBeing = #nodeBeing{state=NodeState#nodeState{capacities=dict:new(), turningFractions=dict:new()},models=M},
 	{ok, NodeBeing}.
 
+handle_call(check_consistency, _From, NB=#nodeBeing{state=#nodeState{id = Id,turningFractions=TF, connections = Connections}}) ->
+	CheckFun = fun(#connection{from=From, to=To}) ->
+		Ok = dict:is_key({From,To},TF),
+		Ok orelse io:format("check failed for node ~w on link pair: ~w, ~w~n",[Id,From,To]),
+		Ok
+	end,
+	Result = lists:all(CheckFun, Connections),
+	{reply, {?reply, check_consistency, Result}, NB};
+
 handle_call(turning_fractions, _From, S=#nodeBeing{state=#nodeState{turningFractions=TF}}) ->
 	{reply, {?reply, turning_fractions, dict:to_list(TF)}, S};
+handle_call(connections, _From, S=#nodeBeing{state=#nodeState{connections=C}}) ->
+	{reply, {?reply, connections, C}, S};
 handle_call(stop, _From, S=#nodeBeing{}) ->
     {stop, normal, ok, S};
 handle_call(_Message, _From, S) ->
@@ -141,7 +152,7 @@ handle_info({subscribe, get_info, Interval, repeat, Receiver}, NB) ->
 handle_info({get_info, Pid},  NB=#nodeBeing{state=#nodeState{id=Id}}) ->
 	Pid ! {info, Id, NB},
 	{noreply, NB};
-handle_info({add_turning_fractions, FromId, Tos}, NB=#nodeBeing{state=NS=#nodeState{turningFractions=TF}}) ->
+handle_info({add_turning_fractions, FromId, Tos}, NB=#nodeBeing{state=NS=#nodeState{turningFractions=TF, connections=Connections}}) ->
 	ToFun = fun({ToId, Prob}, AccTF) ->
 		dict:store({FromId,ToId}, Prob, AccTF)
 		end,
