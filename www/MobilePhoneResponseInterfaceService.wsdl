@@ -3,7 +3,7 @@
 <definitions targetNamespace="http://mobilephone.modum.mm/" name="MobilePhoneResponseInterfaceService" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://mobilephone.modum.mm/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
   <types>
     <xsd:schema>
-      <xsd:import namespace="http://mobilephone.modum.mm/" schemaLocation="MobilePhoneResponseInterfaceService_schema1.xsd"/>
+      <xsd:import namespace="http://mobilephone.modum.mm/" schemaLocation="www/MobilePhoneResponseInterfaceService_schema1.xsd"/>
     </xsd:schema>
   </types>
   <message name="provideMapInfoResponse">

@@ -5,11 +5,13 @@
 
   <xs:element name="mapInfoResponse" type="tns:mapInfoResponse"/>
 
-  <xs:element name="mapSegmentList" type="tns:mapSegmentList"/>
-
   <xs:element name="provideMapInfoResponse" type="tns:provideMapInfoResponse"/>
 
   <xs:element name="provideMapInfoResponseResponse" type="tns:provideMapInfoResponseResponse"/>
+
+  <xs:element name="routeSegment" type="tns:routeSegment"/>
+
+  <xs:element name="suggestedRoute" type="tns:suggestedRoute"/>
 
   <xs:element name="summary" type="tns:summary"/>
 
@@ -24,12 +26,18 @@
       <xs:element name="deviceID" type="xs:string" minOccurs="0"/>
       <xs:element name="requestID" type="xs:int"/>
       <xs:element name="timestamp" type="xs:dateTime" minOccurs="0"/>
-      <xs:element name="suggestedRoute" type="tns:mapSegmentList" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="suggestedRoutes" type="tns:suggestedRoute" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="summary" type="tns:summary" minOccurs="0"/>
     </xs:sequence>
   </xs:complexType>
 
-  <xs:complexType name="mapSegmentList" final="extension restriction">
+  <xs:complexType name="suggestedRoute" final="extension restriction">
+    <xs:sequence>
+      <xs:element name="route" type="tns:routeSegment" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="routeSegment" final="extension restriction">
     <xs:sequence>
       <xs:element name="IDs" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="modeOfTransport" type="tns:eTransportType" minOccurs="0"/>
