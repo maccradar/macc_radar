@@ -12,6 +12,10 @@ out(A) ->
     {ok,{IP,_}} = Peer,
     A2=A#arg{state = [{ip, IP}]},
     yaws_rpc:handler_session(A2, {?MODULE, callback}).
+
+callback([{ip, IP}] = _State, {call, closest_node, Value} = _Request, Session) ->
+	io:format("~p~n",[Value]),
+	{array, [{struct, [{"lat", Lat}, {"lon", Lon}]}]} = Value,
 	
 callback([{ip, IP}] = _State, {call, forecasts, Value} = _Request, Session) ->
 	io:format("~p~n",[Value]),

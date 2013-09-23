@@ -1,7 +1,7 @@
 <h1> K-Shortest path demo (Yen's algorithm) </h1>
 <p> You requested a route from %oname% (%origin%) to %dname% (%destination%). The map below highlights the %k% shortests paths:</p>
 
-<div id="map" style="width: 600px; height: 400px"></div>
+<div class="context-menu" id="map" style="width: 600px; height: 400px"></div>
 <form action="" method="post" onSubmit="return kill_simulation()">
 <input id="kill_sim" type="submit" value="Stop Simulation"/>
 </form>
@@ -10,12 +10,31 @@
 <div id="intentions"></div>
 <div id="routeList"></div>
 	<script>
+	
 var serviceURL = "ajax.yaws";
-var methods = [ "kill_simulation" ];
+var methods = [ "kill_simulation", "closest_node" ];
 
 var jsonrpc = imprt("jsonrpc");
 var service = new jsonrpc.ServiceProxy(serviceURL, methods);
 
+function closest_node(lat, lon) {
+	var request = {lat: lat, lon: lon};
+	
+	try {
+		service.closest_node(request, function(res, err) {
+			if (res) {
+				nodeid = res;
+				alert(nodeid);
+			} else if (err) {
+				alert(err);
+			}
+		}
+		);
+						
+	} catch(e) {
+		alert(e);
+	}
+}
 function kill_simulation() {
     try {
      document.getElementById('kill_sim').value = service.kill_simulation();
@@ -75,8 +94,10 @@ function kill_simulation() {
 		  color: 'red'
 		})
 
-		L.marker(%origin%, {icon: startMarker}).addTo(map).bindPopup("%oname%").openPopup();
-		L.marker(%destination%, {icon: finishMarker}).addTo(map).bindPopup("%dname%");
+		var originMarker = L.marker(%origin%, {icon: startMarker});
+		originMarker.addTo(map).bindPopup("%oname%").openPopup();
+		var destinationMarker = L.marker(%destination%, {icon: finishMarker});
+		destinationMarker.addTo(map).bindPopup("%dname%");
 		
 		function get_random_color() {
 			var letters = '0123456789ABCDEF'.split('');
@@ -89,14 +110,50 @@ function kill_simulation() {
 		
 		var popup = L.popup();
 		
-		function onMapClick(e) {
-			popup
-				.setLatLng(e.latlng)
-				.setContent("You clicked the map at " + e.latlng.toString())
-				.openOn(map);
+		
+		
+		function setOrigin(lat, lon) {
+			originMarker.setLatLng(mapClickLatLng);
+		
 		}
 		
-		map.on('click', onMapClick);
+		function setDestination(lat, lon) {
+			destinationMarker.setLatLng(mapClickLatLng);
+		}
+		
+		function resetOriginDestination() {
+		}
+		
+		var mapClickLatLng = "undefined";
+		function contextMenuCallback(key, options) {
+						if(key == "origin")
+							setOrigin(mapClickLatLng.lat, mapClickLatLng.lng);
+						else if(key == "destination")
+							setDestination(mapClickLatLng.lat, mapClickLatLng.lng);
+						else if(key == "reset")
+							resetOriginDestination();	
+					}
+		
+		function onMapClick(e) {
+			mapClickLatLng = e.latlng;
+			popup
+				.setLatLng(e.latlng)
+				.setContent("You clicked the map at " + e.latlng.lat + " " + e.latlng.lng)
+				.openOn(map);
+			$(function(){
+				$.contextMenu({
+					selector: '.context-menu', 
+					callback: contextMenuCallback,
+					items: {
+						"origin": {name: "Set as origin", icon: "home"},
+						"destination": {name: "Set as destination", icon: "flag"},
+						"reset": {name: "Reset", icon: "reset"},
+					}
+				});
+			});
+		}
+		
+		map.on('contextmenu', onMapClick);
 		
 		function createRoute(latlon, color) {
                 var point, route, points = [];
