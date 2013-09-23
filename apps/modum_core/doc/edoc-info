@@ -1,0 +1,9 @@
+%% encoding: UTF-8
+{application,modum_core}.
+{packages,[]}.
+{modules,[ant,astar,client,client_sv,core_test,cumulative_flow,
+          fundamental_diagram,inits,link_holon,link_holon_sv,link_model,
+          modum_main,modum_proxy,node_holon,node_holon_sv,node_model,parsers,
+          server,server_sv,testServer,traffic_ant,vehicle_holon,
+          vehicle_holon_sv,yaws_events,yaws_sse_cfs,yaws_sse_density,
+          yaws_sse_history,yaws_sse_intentions]}.
