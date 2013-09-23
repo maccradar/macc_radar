@@ -5,6 +5,7 @@ deps/
 ebin/
 *.log
 *.log.old
+.eunit/
 
 #################
 ## Eclipse
