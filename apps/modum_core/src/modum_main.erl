@@ -175,8 +175,9 @@ init(Map, ProxyState=#proxyState{model=Model}) ->
 			{ok, VSV} = vehicle_holon_sv:start_link(simple),
 			U = atom_to_list(?undefined),
 			FilterN = [F || F <- Nodes, F#nodeState.coordinates /= [{U,U}]],
-			io:format("Filtered ~w nodes~n", [length(FilterN)]),
+			io:format("Filtered ~w nodes with undefined coordinates~n", [length(Nodes)-length(FilterN)]),
 			modum_proxy:create_graph({FilterN, Links}),
+			add_turning_fractions({FilterN, Links}),
 			{ok, NSV, LSV, VSV};
 		{error, Error} ->
 			Error
@@ -242,4 +243,20 @@ shape_to_points(Shape) ->
 	Ps = string:tokens(Shape," "),
 	F = fun(P) -> [X,Y] = string:tokens(P, ","), #point{x=list_to_float(X),y=list_to_float(Y)} end,
 	lists:map(F, Ps).
-	
+
+add_turning_fractions({Nodes, Links}) ->
+	{ok, ProjectDir} = application:get_env(modum_core,project_dir),
+	{ok, ComDir} = application:get_env(modum_core,com_dir),
+	{ok, Xml} = file:read_file(filename:join([ProjectDir,ComDir,"turnDefs_noUturns.xml"])),
+	{ok, {_Tag, _Att, Content}, _Tail} = erlsom:simple_form(Xml),
+	FromTos = [{list_to_atom(FromId), whereis(list_to_atom(FromId)),[{list_to_atom(ToId), list_to_float(Prob)/100.0} || {"toEdge",[{"probability", Prob},{"id", ToId}],[]} <- Tos]} || {"fromEdge",[{"id",FromId}],Tos} <-Content],
+	TurnFun = fun({Id,Pid,Tos}) when Pid =/= undefined -> 
+		Pid ! {downstream_connections, self()},
+		NodeId = receive
+			{?reply, downstream_connections, [Node]} -> Node
+			end,
+		NodeId ! {add_turning_fractions, Id, Tos};
+			({Id,_,_}) ->
+				io:format("undefined link: ~w~n",[Id])
+		end,
+	lists:foreach(TurnFun,FromTos).

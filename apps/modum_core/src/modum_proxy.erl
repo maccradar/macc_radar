@@ -31,7 +31,7 @@
 -module(modum_proxy).
 -behaviour(gen_server).
 
--export([start_link/1, stop/0, create_graph/1, vertex/1, get_graph/0, get_k_shortest_path/3, get_status_info/0, get_server/1, get_client/1, get_links_of_type/1]).
+-export([start_link/1, stop/0, create_graph/1, vertex/1, get_graph/0, get_k_shortest_path/3, get_status_info/0, get_server/1, get_client/1, get_links_of_type/1, get_closest_node/1]).
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, code_change/3, terminate/2, get_id/0]).
 
@@ -52,6 +52,10 @@ vertex(V) ->
 		{?reply, vertex, V1} -> V1
 	end.
 
+get_closest_node({Lat,Lon}) ->
+	{?reply, closest_node, NodeId} = gen_server:call(?ID, {closest_node, {Lat,Lon}}, ?callTimeout),
+	NodeId.
+	
 get_graph() ->
 	get_id() ! {get_graph, self()},
 	receive
@@ -148,6 +152,11 @@ handle_call({links_of_type,RoadType}, _From, State=#proxyState{cache=Cache, link
 			NewCache = dict:store({link_ids, RoadType}, Result, Cache),
 			{reply, {?reply, links_of_type, Result}, State#proxyState{cache=NewCache}}
 	end;
+
+handle_call({closest_node, {Lat,Lon}}, _From, State=#proxyState{nodes=Nodes}) ->
+	Dists = [{NodeId, node_holon:get_distance(NodeId, {Lat,Lon})} || NodeId <- Nodes],
+	{ClosestId, _Distance} = lists:foldl(fun({Id1,Dist}, {_Id,Min}) when Dist < Min -> {Id1,Dist}; (_,A) -> A end, {?undefined, ?inf}, Dists),
+	{reply, {?reply, closest_node, ClosestId}, State};
 	
 % default callback for synchronous calls.
 handle_call(_Message, _From, S) ->

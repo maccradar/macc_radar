@@ -31,7 +31,7 @@
 -module(node_holon).
 -behaviour(gen_server).
 
--export([start_link/1, stop/1, get_description/1, get_coordinates/1]).
+-export([start_link/1, stop/1, get_description/1, get_coordinates/1, get_distance/2, get_turning_fractions/1]).
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, code_change/3, terminate/2]).
 -include("states.hrl").
@@ -40,17 +40,29 @@
 get_description(Id) ->
 	Id ! {state, self()},
 	Info = receive
-		{reply, state, S} -> S
+		{?reply, state, S} -> S
 	end,
 	Info#nodeState.desc.
 
 get_coordinates(Id) ->
 	Id ! {state, self()},
 	Info = receive
-		{reply, state, S} -> S
+		{?reply, state, S} -> S
 	end,
 	Info#nodeState.coordinates.
 
+get_distance(Id, {Lat1,Lon1}) ->
+	Id ! {state, self()},
+	Info = receive
+		{?reply, state, S} -> S
+	end,
+	[{Lat2,Lon2}] = Info#nodeState.coordinates,
+	math:pow(Lat1-Lat2,2) + math:pow(Lon1-Lon2,2).
+	
+get_turning_fractions(Id) ->
+	{?reply, turning_fractions, TF} = gen_server:call(Id, turning_fractions, ?callTimeout),
+	TF.
+	
 start_link(NodeState=#nodeState{id=Id}) when is_atom(Id) ->
     gen_server:start_link({local,Id}, ?MODULE, [NodeState], []).
 
@@ -65,9 +77,11 @@ init([NodeState]) ->
 	STM = (fun(TimeEnd) -> TimeEnd end),
 	FD = fundamental_diagram:init(0.015, 0.5, 0.2), 
 	M = #models{fd=FD, ttm=TTM, stm=STM},
-	NodeBeing = #nodeBeing{state=NodeState#nodeState{capacities=dict:new()},models=M},
+	NodeBeing = #nodeBeing{state=NodeState#nodeState{capacities=dict:new(), turningFractions=dict:new()},models=M},
 	{ok, NodeBeing}.
 
+handle_call(turning_fractions, _From, S=#nodeBeing{state=#nodeState{turningFractions=TF}}) ->
+	{reply, {?reply, turning_fractions, dict:to_list(TF)}, S};
 handle_call(stop, _From, S=#nodeBeing{}) ->
     {stop, normal, ok, S};
 handle_call(_Message, _From, S) ->
@@ -127,6 +141,13 @@ handle_info({subscribe, get_info, Interval, repeat, Receiver}, NB) ->
 handle_info({get_info, Pid},  NB=#nodeBeing{state=#nodeState{id=Id}}) ->
 	Pid ! {info, Id, NB},
 	{noreply, NB};
+handle_info({add_turning_fractions, FromId, Tos}, NB=#nodeBeing{state=NS=#nodeState{turningFractions=TF}}) ->
+	ToFun = fun({ToId, Prob}, AccTF) ->
+		dict:store({FromId,ToId}, Prob, AccTF)
+		end,
+	NewTF = lists:foldl(ToFun, TF, Tos),
+	NewNB = NB#nodeBeing{state=NS#nodeState{turningFractions=NewTF}},
+	{noreply, NewNB};
 handle_info(Message, S) ->
 	io:format("Node ~s received unknown message ~w~n",[(S#nodeBeing.state)#nodeState.id, Message]),
     {noreply, S}.
