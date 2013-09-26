@@ -20,19 +20,40 @@ fieldset p {
 	clear: both;
 	padding: 5px;
 }
+.searchbutton {
+background-color: #cccccc;
+border: 0;
+border-radius: 2px 2px 2px 2px;
+box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+height: 20px;
+text-align: center;
+vertical-align: top;
+width: 72px;
+z-index: -1;
+}
+.searchbutton:hover {
+background-color: #bbbbbb
+}
+label.routeSelection {
+	margin:0px 2px 4px 2px;	
+	padding: 1px;
+	background-color: #eee;
+	width: 75px;
+	display: inline-block;
+}
 </style>
  <div>
- <form method="post" onSubmit="return ksp_simulation()" class="validate">
+ <form onsubmit="return runSimulation();" class="validate">
  <fieldset>
  <legend>K-shortest Paths Planner</legend>
  <p><label class="field" for="Origin">Origin:</label>
-	<input list="nodes" name="origin" id="origin" class="textbox-300">
+	<input list="nodes" name="origin" id="origin" class="textbox-300" required>
  </p>
  <p><label class="field" for="Destination">Destination:</label>
-	<input list="nodes" name="destination" id="destination" class="textbox-300">
+	<input list="nodes" name="destination" id="destination" class="textbox-300" required>
  </p>
  <p><label class="field" for="Number of paths">Number of paths:</label>
-	<select name=k id="k">
+	<select name="k" id="k">
 	<option value="1">1 </option>
 	<option value="2">2 </option>
 	<option value="3">3</option>
@@ -44,163 +65,509 @@ fieldset p {
 	<input type="checkbox" name="simulate" id="simulate" onclick = 'javascript:displaySimulate(this)' value="1">
  </p>
  <table id = "simulateTraffic"></table>
-      <input type="submit" value="Go!" />
+ <p style="position: absolute; left: 625px; top: 80px;"><button type="submit" class="searchbutton" id="run"><i class="icon-search icon-large"></i> Go!</button></p>
+<div id="messages"></div>
+
 <datalist id="nodes"></datalist>
   </fieldset>
   </form>
   </div>
+<fieldset>
+<legend>Map</legend>
+<div class="context-menu" id="map" style="width: 600px; height: 400px"></div>
+</fieldset>
+<form action="" method="post" onSubmit="return killSimulation()">
+<input id="kill_sim" type="submit" value="No simulation running" disabled="1"/>
+</form>
+<label><input type='checkbox' onclick = 'javascript:refresh_intentions();' id="refresh_intentions" disabled="1"> Auto refresh intentions</label>
+<fieldset>
+<legend>Routes</legend>
+<div id="routeSelection"></div>
+<div id="intentions"></div>
+<div id="routeList">No routes calculated yet...</div>
+</fieldset>
 <script>
-var l = document.getElementById("nodes"); 
+
+/* global variables */
+
+var serviceURL = "ajax.yaws";
+var methods = ["kill_simulation", "closest_node", "run_simulation"];
+var jsonrpc = imprt("jsonrpc");
+var service = new jsonrpc.ServiceProxy(serviceURL, methods);
+
+var nodeList = document.getElementById("nodes"); 
 var options = %nodeNames%;
 var values = %nodeIds%;
-	
-	for(var i = 0; i < options.length; i++) {
-		var el = document.createElement("option");
-		el.textContent = values[i];
-		el.value = options[i];
-		l.appendChild(el);
-	} 
 
-	var o = document.getElementById("origin"); 
-	var d = document.getElementById("destination");
-	var sim = document.getElementById("simulateTraffic");
-	
-	for(var i = 0; i < options.length; i++) {
-		var el = document.createElement("option");
-		el.textContent = options[i] + " (" + values[i] + ")";
-		el.value = values[i];
-		o.appendChild(el);
-		var node= o.lastChild.cloneNode(true);
-		d.appendChild(node);
-	}
-	
-	function displaySimulate(cb) {	
-		if(cb.checked) {
-			sim.border = "1";
-			var headerRow = sim.insertRow(0);
-			var nbrVehiclesHeader = headerRow.insertCell(0);
-			nbrVehiclesHeader.innerHTML = "# vehicles";
-			var vehicleTypeHeader = headerRow.insertCell(1);
-			vehicleTypeHeader.innerHTML = "type";
-			var startHeader = headerRow.insertCell(2);
-			startHeader.innerHTML = "departure time (start)";
-			var endHeader = headerRow.insertCell(3);
-			endHeader.innerHTML = "departure time (end)";
-			var arrivalHeader = headerRow.insertCell(4);
-			arrivalHeader.innerHTML = "arrival time";
-			var upstreamHeader = headerRow.insertCell(5);
-			var upstreamLabel = document.createTextNode("search upstream?");
-			var upstream = document.createElement("input");
-			upstream.name = "upstream";
-			upstream.type = "checkbox";
-			upstream.id = "upstream";
-			upstream.value = "1";
-			upstream.text = "search upstream"
-			upstream.onclick = function() { showHideUpstream(upstream); };
-			upstreamHeader.appendChild(upstream);
-			upstreamHeader.appendChild(upstreamLabel);
-			var plusHeader = headerRow.insertCell(6);
-			var plus = document.createElement("input");
-			plus.name = "plus";
-			plus.type = "button";
-			plus.value = "+";
-			plus.onclick = function() { addSimRow(sim.rows[sim.rows.length-1]); showHideUpstream(upstream); };
-			plusHeader.appendChild(plus);
-			var min = document.createElement("input");
-			min.name = "min";
-			min.type = "button";
-			min.value = "-";
-			min.onclick = function() { removeSimRow(); showHideUpstream(upstream); };
-			plusHeader.appendChild(min);
-			addSimRow(null);
-			showHideUpstream(upstream);
-		}
-		else {
-			sim.border = "0";
-			sim.innerHTML = "";
-		}
-	}
-	
-	function addSimRow(previousRow) {
-		var previousEnd = "0";
-		if(previousRow != null) {
-			temp = document.createElement("div");
-			temp.innerHTML = previousRow.cells[3].innerHTML;
-			alert(previousRow.cells[3].innerHTML);
-			previousEnd = temp.firstChild;
-			alert(previousEnd);
-		}
-		var dataRow = sim.insertRow(sim.rows.length);
-		var nbrVehiclesData = dataRow.insertCell(0);
-		var vehicleTypeData = dataRow.insertCell(1);
-		var startData = dataRow.insertCell(2);
-		var endData = dataRow.insertCell(3);
-		var arrivalData = dataRow.insertCell(4);
-		
-		var nbrVehicles = document.createElement("input");
-		nbrVehicles.name = "nbrVehicles";
-		nbrVehicles.type = "number";
-		nbrVehicles.min = "1";
-		nbrVehicles.max = "10000";
-		nbrVehicles.value = "1000";
-		nbrVehiclesData.appendChild(nbrVehicles);
-		
-		var typeSelect = document.createElement("select");
-		typeSelect.name = "type";
-		var typeOptions = ["auto", "auto_once", "interactive"];
-		
-		for(var i = 0; i < typeOptions.length; i++) {
-			var el = document.createElement("option");
-			el.textContent = typeOptions[i];
-			el.value = typeOptions[i];
-			typeSelect.appendChild(el);
-		}
-		vehicleTypeData.appendChild(typeSelect);
-		
-		var start = document.createElement("input");
-		start.name = "start";
-		start.type = "number";
-		start.min = "0";
-		start.max = "10000";
-		start.value = previousEnd;
-		startData.appendChild(start);
-		
-		var end = document.createElement("input");
-		end.name = "end";
-		end.type = "number";
-		end.min = "0";
-		end.max = "10000";
-		end.value = (parseInt(previousEnd)+10).toString();
-		endData.appendChild(end);
-		
-		var arrival = document.createElement("input");
-		arrival.name = "arrival";
-		arrival.type = "number";
-		arrival.min = "0";
-		arrival.max = "100000";
-		arrival.value = "100";
-		arrivalData.appendChild(arrival);
-	}
-	
-	function removeSimRow() {
-		if(sim.rows.length > 2)
-			sim.deleteRow(sim.rows.length-1);
-	}
-	
-	function showHideUpstream(upstream) {
-		if(upstream.checked) {
-			for (var i = 0; i<sim.rows.length;i++) {
-				sim.rows[i].cells[2].style.display = 'none';
-				sim.rows[i].cells[3].style.display = 'none';
-				sim.rows[i].cells[4].style.display = 'block';
-			}
-		} else {
-			for (var i = 0; i<sim.rows.length;i++) {
-				sim.rows[i].cells[2].style.display = 'block';
-				sim.rows[i].cells[3].style.display = 'block';
-				sim.rows[i].cells[4].style.display = 'none';
-			}
-		}
-	};
+for(var i = 0; i < options.length; i++) {
+	var el = document.createElement("option");
+	el.value = options[i] + " : " + values[i];
+	nodeList.appendChild(el);
+} 
 
+var sim = document.getElementById("simulateTraffic");
+
+var routeLayerGroup = L.layerGroup();
+var routePolys = new Array();
+var map = L.map('map', {
+		layers: [routeLayerGroup]
+	});
+map.setView(%center%, 15);
+map.on('contextmenu', onMapClick);
+
+L.Polyline.prototype.length_in_meters = function () {
+	var total = 0;
+	var begin = null;
+	var polyline_coords = this._latlngs;
+	for (var i = 0; i < polyline_coords.length - 1; i++) {
+		begin = polyline_coords[i];
+		total  += begin.distanceTo(polyline_coords[i + 1]);
+	}
+	
+	total = total.toFixed();
+	return total;
+}
+L.tileLayer('http://{s}.tile.cloudmade.com/BC9A493B41014CAABB98F0471D759707/997/256/{z}/{x}/{y}.png', {
+	maxZoom: 18,
+	attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>'
+}).addTo(map);
+
+var startMarker = L.AwesomeMarkers.icon({icon: 'home', color: 'green'});
+var finishMarker = L.AwesomeMarkers.icon({icon: 'flag', color: 'red'});
+var originMarker = null;
+var destinationMarker = null;
+
+//Server side events for traffic density estimation
+var refresh_source = null;
+
+var lastResponse = null;
+
+/* function definitions */
+
+function runSimulation() {
+	var runButton = document.getElementById("run");
+	runButton.disabled = 1;
+	runButton.innerHTML = "Searching...";
+	var messages = document.getElementById("messages");
+	var simEl = document.getElementById("simulate");
+	var S = (simEl && simEl.checked) ? "sim" : "no_sim";
+	var upstreamEl = document.getElementById("upstream");
+	var Upstream = (upstreamEl && upstreamEl.checked) ? "upstream" : "no_upstream";
+	var Vehicles = [];
+	var Type = [];
+	var Start = [];
+	var End = [];
+	var Arrival = [];
+	for(i=0;i< sim.rows.length-1; i++) {
+		Vehicles[i] = parseInt(document.getElementsByName("nbrVehicles")[i].value);
+		Type[i] = document.getElementsByName("type")[i].value;
+		Start[i] = parseInt(document.getElementsByName("start")[i].value);
+		End[i] = parseInt(document.getElementsByName("end")[i].value);
+		Arrival[i] = parseInt(document.getElementsByName("arrival")[i].value);
+	}
+	var O = document.getElementById("origin").value.split(" : "); 
+	var D = document.getElementById("destination").value.split(" : "); 
+	var K = parseInt(document.getElementById("k").value);
+	
+	var request = {	simulate: S, 
+					upstream: Upstream,
+					nbrVehicles: Vehicles,
+					type: Type,
+					start: Start,
+					end: End,
+					arrival: Arrival,
+					origin: O,
+					destination: D,
+					k: K
+				};
+	try {
+		service.run_simulation(request, function(res, err) {
+			if (res) {
+				if(res == "failure") {
+					messages.innerHTML = "Sorry, no routes were found. Please try another origin-destination pair.";
+					clearPage();
+				} else {
+					lastResponse = res[0];
+					updatePage();
+					messages.innerHTML = "Results are shown on map below.";
+				}	
+			} else if (err) {
+				messages.innerHTML ="Error processing request. Please try again.";
+				console.log(err);
+			}
+			runButton.innerHTML = "<i class='icon-search icon-large'></i> Go!";
+			runButton.disabled = 0;
+		}
+		);			
+	} catch(e) {
+		alert(e);
+	}
+	return false; // to avoid redirect on form submit
+}
+
+function displaySimulate(cb) {	
+	if(cb.checked) {
+		sim.border = "1";
+		var headerRow = sim.insertRow(0);
+		var nbrVehiclesHeader = headerRow.insertCell(0);
+		nbrVehiclesHeader.innerHTML = "# vehicles";
+		var vehicleTypeHeader = headerRow.insertCell(1);
+		vehicleTypeHeader.innerHTML = "type";
+		var startHeader = headerRow.insertCell(2);
+		startHeader.innerHTML = "departure time (start)";
+		var endHeader = headerRow.insertCell(3);
+		endHeader.innerHTML = "departure time (end)";
+		var arrivalHeader = headerRow.insertCell(4);
+		arrivalHeader.innerHTML = "arrival time";
+		var upstreamHeader = headerRow.insertCell(5);
+		var upstreamLabel = document.createTextNode("search upstream?");
+		var upstream = document.createElement("input");
+		upstream.name = "upstream";
+		upstream.type = "checkbox";
+		upstream.id = "upstream";
+		upstream.value = "1";
+		upstream.text = "search upstream"
+		upstream.onclick = function() { showHideUpstream(upstream); };
+		upstreamHeader.appendChild(upstream);
+		upstreamHeader.appendChild(upstreamLabel);
+		var plusHeader = headerRow.insertCell(6);
+		var plus = document.createElement("input");
+		plus.name = "plus";
+		plus.type = "button";
+		plus.value = "+";
+		plus.onclick = function() { addSimRow(sim.rows[sim.rows.length-1]); showHideUpstream(upstream); };
+		plusHeader.appendChild(plus);
+		var min = document.createElement("input");
+		min.name = "min";
+		min.type = "button";
+		min.value = "-";
+		min.onclick = function() { removeSimRow(); showHideUpstream(upstream); };
+		plusHeader.appendChild(min);
+		addSimRow(null);
+		showHideUpstream(upstream);
+	}
+	else {
+		sim.border = "0";
+		sim.innerHTML = "";
+	}
+}
+
+function addSimRow(previousRow) {
+	var previousEnd = "0";
+	if(previousRow != null) {
+		temp = document.createElement("div");
+		temp.innerHTML = previousRow.cells[3].innerHTML;
+		previousEnd = temp.firstChild;
+	}
+	var dataRow = sim.insertRow(sim.rows.length);
+	var nbrVehiclesData = dataRow.insertCell(0);
+	var vehicleTypeData = dataRow.insertCell(1);
+	var startData = dataRow.insertCell(2);
+	var endData = dataRow.insertCell(3);
+	var arrivalData = dataRow.insertCell(4);
+	
+	var nbrVehicles = document.createElement("input");
+	nbrVehicles.name = "nbrVehicles";
+	nbrVehicles.type = "number";
+	nbrVehicles.min = "1";
+	nbrVehicles.max = "10000";
+	nbrVehicles.value = "1000";
+	nbrVehiclesData.appendChild(nbrVehicles);
+	
+	var typeSelect = document.createElement("select");
+	typeSelect.name = "type";
+	var typeOptions = ["auto", "auto_once", "interactive"];
+	
+	for(var i = 0; i < typeOptions.length; i++) {
+		var el = document.createElement("option");
+		el.textContent = typeOptions[i];
+		el.value = typeOptions[i];
+		typeSelect.appendChild(el);
+	}
+	vehicleTypeData.appendChild(typeSelect);
+	
+	var start = document.createElement("input");
+	start.name = "start";
+	start.type = "number";
+	start.min = "0";
+	start.max = "10000";
+	start.value = previousEnd;
+	startData.appendChild(start);
+	
+	var end = document.createElement("input");
+	end.name = "end";
+	end.type = "number";
+	end.min = "0";
+	end.max = "10000";
+	end.value = (parseInt(previousEnd)+10).toString();
+	endData.appendChild(end);
+	
+	var arrival = document.createElement("input");
+	arrival.name = "arrival";
+	arrival.type = "number";
+	arrival.min = "0";
+	arrival.max = "100000";
+	arrival.value = "100";
+	arrivalData.appendChild(arrival);
+}
+
+function removeSimRow() {
+	if(sim.rows.length > 2)
+		sim.deleteRow(sim.rows.length-1);
+}
+
+function showHideUpstream(upstream) {
+	if(upstream.checked) {
+		for (var i = 0; i<sim.rows.length;i++) {
+			sim.rows[i].cells[2].style.display = 'none';
+			sim.rows[i].cells[3].style.display = 'none';
+			sim.rows[i].cells[4].style.display = 'block';
+		}
+	} else {
+		for (var i = 0; i<sim.rows.length;i++) {
+			sim.rows[i].cells[2].style.display = 'block';
+			sim.rows[i].cells[3].style.display = 'block';
+			sim.rows[i].cells[4].style.display = 'none';
+		}
+	}
+};
+
+function closest_node(target, lat, lon) {
+	var request = {lat: lat, lon: lon};
+	
+	try {
+		service.closest_node(request, function(res, err) {
+			if (res) {
+				nodeid = res;
+				document.getElementById(target).value = nodeid[1] + " : " + nodeid[0];
+			} else if (err) {
+				alert(err);
+			}
+		}
+		);
+						
+	} catch(e) {
+		alert(e);
+	}
+}
+
+function killSimulation() {
+    try {
+     document.getElementById('kill_sim').value = service.kill_simulation();
+	 document.getElementById('kill_sim').disabled = 1;
+     } catch(e) {
+     document.getElementById('kill_sim').value = e;
+	 document.getElementById('kill_sim').disabled = 1;
+     }
+     return false;
+}
+
+function clearPage() {
+	routeLayerGroup.clearLayers();
+	routePolys = [];
+	originMarker = null;
+	destinationMarker = null;
+	document.getElementById("routeList").innerHTML="";
+	document.getElementById("routeSelection").innerHTML="";
+	document.getElementById("intentions").innerHTML="";
+}
+
+function updatePage() {
+	clearPage();
+	
+	var routes = lastResponse['routes'];
+
+	for(var i=0; i<routes.length;i++) {
+		routePolys[i] = createRoute(routes[i], ksp_paths[i]);
+		routeLayerGroup.addLayer(routePolys[i]);
+	}
+	
+	var ids = lastResponse['ids'];
+	var names = lastResponse['names'];
+	var lengths = lastResponse['lengths'];
+		
+	for(var i=0; i<names.length;i++) {
+		addRoute(ids[i], names[i],i+1, lengths[i], routePolys[i].length_in_meters());
+	}
+
+	for(var i = 0; i < lastResponse['k']; i++)
+		addCheckbox("Route "+(i+1), i); 
+	
+	originMarker = L.marker(lastResponse['origin'], {icon: startMarker});
+	routeLayerGroup.addLayer(originMarker);
+	destinationMarker = L.marker(lastResponse['destination'], {icon: finishMarker});
+	routeLayerGroup.addLayer(destinationMarker);
+	document.getElementById("refresh_intentions").disabled = 0;
+	if(lastResponse['simulation'] == "sim") {
+		var killSim = document.getElementById("kill_sim");
+		killSim.disabled = 0;
+		killSim.value = "Stop simulation";
+	} else {
+		var killSim = document.getElementById("kill_sim");
+		killSim.disabled = 1;
+		killSim.value = "No simulation running";
+	}
+}
+
+function setOrigin() {
+	if(originMarker != null)
+		clearPage();
+	originMarker = L.marker(mapClickLatLng, {icon: startMarker});
+	routeLayerGroup.addLayer(originMarker);
+	closest_node("origin", mapClickLatLng.lat, mapClickLatLng.lng);
+}
+
+function setDestination() {
+	if(destinationMarker != null)
+		clearPage();
+	destinationMarker = L.marker(mapClickLatLng, {icon: finishMarker});
+	routeLayerGroup.addLayer(destinationMarker);
+	closest_node("destination", mapClickLatLng.lat, mapClickLatLng.lng);
+}
+
+function resetOriginDestination() {
+	// clear page
+	routeLayerGroup.clearLayers();
+	routePolys = [];
+	document.getElementById("routeList").innerHTML="";
+	document.getElementById("routeSelection").innerHTML="";
+	document.getElementById("intentions").innerHTML="";
+}
+
+var mapClickLatLng = "undefined";
+function contextMenuCallback(key, options) {
+				if(key == "origin")
+					setOrigin();
+				else if(key == "destination")
+					setDestination();
+				else if(key == "reset")
+					resetOriginDestination();	
+			}
+
+function onMapClick(e) {
+	mapClickLatLng = e.latlng;
+	$(function(){
+		$.contextMenu({
+			selector: '.context-menu', 
+			callback: contextMenuCallback,
+			items: {
+				"origin": {name: "Set as origin", icon: "home"},
+				"destination": {name: "Set as destination", icon: "flag"},
+				"reset": {name: "Reset", icon: "reset"},
+			}
+		});
+	});
+}
+		
+function createRoute(latlon, color) {
+		var point, points = [];
+		for (var i=0; i< latlon.length; i++)
+		{
+			if(latlon[i][0] != "undefined" && latlon[i][1] != "undefined") {
+				point = new L.LatLng(latlon[i][0] , latlon[i][1]);
+				points.push(point);
+			}
+		}
+		var layer = new L.Polyline(points, {
+			weight: 5,
+			opacity: 0.75,
+			smoothFactor: 1,
+			color: color
+		});
+		
+		// zoom the map to the polyline
+		map.fitBounds(layer.getBounds());
+		return layer;
+}
+				
+function addCheckbox(name, value) {
+	// create the necessary elements
+	var label= document.createElement("label");
+	label.style.backgroundColor = ksp_paths[value];
+	label.className += " " + "routeSelection";
+	//var description = document.createTextNode(name);
+	var checkbox = document.createElement("input");
+	checkbox.onclick = function() { displayRoute(checkbox); };
+	checkbox.type = "checkbox";    // make the element a checkbox
+	checkbox.name = name;      // give it a name we can check on the server side
+	checkbox.value = value;
+	checkbox.checked = true;
+
+	label.appendChild(checkbox);   // add the box to the element
+	//label.appendChild(description);// add the description to the element
+	
+	// add the label element to your div
+	document.getElementById('routeSelection').appendChild(label);
+}
+
+function displayRoute(cb) {
+	if(cb.checked) // show route
+		routePolys[cb.value].setStyle({opacity: 1})
+	else
+		routePolys[cb.value].setStyle({opacity: 0})
+}
+
+function addRoute(idlist, streetnames, route_number, length, distance) {
+	var form = document.createElement("form");
+	form.action = "status_post.yaws";
+	form.method="POST";
+	form.id="route_form"+route_number;
+	form.name="route_form"+route_number;
+	var header = document.createElement("h4");
+	var headerText = document.createTextNode("Route " + route_number + " (" + length + " / " + distance + "m):");
+	header.appendChild(headerText);
+	var route = document.createElement("label");
+	var input = document.createElement("input");
+	input.type = "hidden";
+	input.name = "link";
+	route.appendChild(input);
+	for(var i=0; i<streetnames.length-1; i++) {
+		var link= document.createElement("a");
+		var linkText = document.createTextNode(streetnames[i]);
+		link.appendChild(linkText);
+		link.href = "javascript:getstatus('" + form.name + "', '"+idlist[i]+ "')";
+		var arrow = document.createTextNode(" --> ");
+		route.appendChild(link);
+		route.appendChild(arrow);
+	}
+	var last = document.createElement("a");
+	var lastText = document.createTextNode(streetnames[streetnames.length-1]);
+	last.appendChild(lastText);
+	last.href = "javascript:getstatus('" + form.name + "', '"+idlist[streetnames.length-1]+ "')";
+	route.appendChild(last);
+	
+	form.appendChild(header);
+	form.appendChild(route);
+	document.getElementById('routeList').appendChild(form);
+}
+
+function getstatus (formType, linkType )
+{
+	document.getElementById(formType).link.value = linkType ;
+	document.getElementById(formType).submit() ;
+}
+		
+function refresh_intentions() {
+	var cb = document.getElementById("refresh_intentions");
+	console.log(cb);
+	if(cb.checked && lastResponse != null) {
+		var odk = [lastResponse['oid'],lastResponse['did'], lastResponse['k']];
+		console.log(odk);
+		refresh_source = new EventSource("/intentions/"+window.btoa(odk));
+		refresh_source.onmessage = function(event) {
+			var d = window.atob(event.data);
+			var intentions = eval(d);
+			alert(intentions);
+			for(var i=0; i<intentions.length;i++) {
+				var rNr = i+1;
+				var intPerc = intentions[i]*100;
+				var rText = document.createTextNode("Route " + rNr + ":" + intPerc + "/100");
+				document.getElementById('intentions').appendChild(rText);
+			}
+		};
+	}
+	else if(refresh_source != null) {
+		refresh_source.close();
+	}
+};
 </script>

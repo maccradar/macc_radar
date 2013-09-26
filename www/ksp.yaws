@@ -31,11 +31,54 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 -include_lib("modum_core/include/states.hrl").
 out(A) ->
+	Center = [52.95319, -1.1479], % Nottingham city centre
 	{Links, Nodes} = modum_proxy:get_status_info(),
-	io:format("~p~n", [Nodes]),
 	Names_Ids = lists:usort(lists:zip([node_holon:get_description(X) || X <- Nodes], [atom_to_list(X) || X <- Nodes])),
-	Names = [N || {N,_} <- Names_Ids],
-	Ids = [I || {_,I} <- Names_Ids],
-	[{ssi,"modum.ssi","%",[]},{ssi,"header.ssi", "%", [{"title", "MECA KU Leuven KSP"}]},{ssi,"ksp.ssi", "%",[{"nodeNames", lists:flatten(io_lib:format("~p", [Names]))}, {"nodeIds", lists:flatten(io_lib:format("~p", [Ids]))}]},{ssi,"footer.ssi", "%", []}].
+	NodeNames = [N || {N,_} <- Names_Ids],
+	NodeIds = [I || {_,I} <- Names_Ids],
+	[{ssi,"header.ssi", "%", [{"title", "MECA KU Leuven KSP Result"}]},{ssi,"modum.ssi","%",[]},{ssi,"ksp.ssi","%",[{"center", lists:flatten(io_lib:format("~p", [Center]))},{"nodeNames", lists:flatten(io_lib:format("~p", [NodeNames]))}, {"nodeIds", lists:flatten(io_lib:format("~p", [NodeIds]))}]},{ssi,"footer.ssi", "%", []}].
+simulate_traffic([V | Vs], [T | Ts], [S | Ss], [E | Es], [_A | As], O, D, K, no_upstream) ->
+	io:format("Simulating ~w vehicles of type ~w and departing from ~w to ~w between ~w and ~w.~n", [V, T, O, D, S, E]),
+	core_test:create_vehicles(V,{departure_time, {S,E}}, {O,D,K}, T),
+	simulate_traffic(Vs,Ts,Ss,Es,As,O,D,K, no_upstream);
+simulate_traffic([V | Vs], [T | Ts], [_S | Ss], [_E | Es], [A | As], O, D, K, upstream) ->
+	io:format("Simulating ~w vehicles of type ~w and departing from ~w to ~w with upstream search arrival time ~w.~n", [V, T, O, D, A]),
+	core_test:create_vehicles(V, {arrival_time, A}, {O,D,K}, T),
+	simulate_traffic(Vs,Ts,Ss,Es,As,O,D,K, upstream);	
+simulate_traffic([],[],[],[],[], _O,_D,_K,_) ->
+	io:format("Finished initialization of vehicles.~n",[]).
+	
+id_to_lat_lon(Id) ->
+	[{Lat, Lon}] = node_holon:get_coordinates(Id),
+	[Lat, Lon].
+	
+odds(L) -> 
+	L2 = lists:zip(lists:seq(1, length(L)), L),
+    [A || {Ai, A} <- L2, Ai rem 2 == 1].
 
-</erl>
+evens(L) ->
+	L2 = lists:zip(lists:seq(1, length(L)), L),
+	[A || {Ai, A} <- L2, Ai rem 2 == 0].
+
+paths_to_ids([P | Paths]) ->
+	Links = evens(P),
+	Ids = lists:map(fun atom_to_list/1, Links),
+	[Ids | paths_to_ids(Paths)];
+paths_to_ids([]) ->
+	[].
+	
+paths_to_lat_lon([P | Paths]) ->
+	Nodes = odds(P),	
+	Route = lists:map(fun id_to_lat_lon/1,Nodes),
+	[Route | paths_to_lat_lon(Paths)];
+paths_to_lat_lon([]) ->
+	[].
+	
+paths_to_names([P | Paths]) ->
+	Links = evens(P),
+	Route = lists:map(fun link_holon:get_description/1, Links),
+	[Route | paths_to_names(Paths)];
+paths_to_names([]) ->
+	[].
+	
+ </erl>

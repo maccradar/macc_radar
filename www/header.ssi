@@ -15,7 +15,6 @@
 	<script src="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.js"></script>
 	<script src="awesome-markers/dist/leaflet.awesome-markers.js"></script>
 	<script src="js/roadcolors.js"></script>
-	<script src="js/json-minified.js"></script>
 	<script src="object_cache/object_cache.min.js"></script>
 	<script src="jsolait/jsolait.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>

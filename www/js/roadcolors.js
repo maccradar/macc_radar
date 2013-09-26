@@ -1,3 +1,11 @@
+var ksp_paths = new Array();
+ksp_paths[0]="#cc0000";
+ksp_paths[1]="#00cc00";
+ksp_paths[2]="#0000cc";
+ksp_paths[3]="#cc00cc";
+ksp_paths[4]="#cccc00";
+
+
 /* (c) maps.be-mobile.be */
 
 var level_of_service = new Array();
