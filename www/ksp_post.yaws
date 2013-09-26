@@ -31,54 +31,59 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 -include_lib("modum_core/include/states.hrl").
 out(A) ->
-	S = case postvar(A,"simulate") of
-		undefined -> no_sim;
-		_ -> sim
-	end,
-	Upstream = case postvar(A, "upstream") of
-		undefined -> no_upstream;
-		_ -> upstream
-	end,
-	Vehicles = case postvar(A,"nbrVehicles") of
-		undefined -> [];
-		{ok, ValVehicles} -> [list_to_integer(ValVehicles)];
-		TupleVehicles -> [list_to_integer(X) || X <- tuple_to_list(TupleVehicles)]
-	end,
-	Type = case postvar(A, "type") of
-		undefined -> [];
-		{ok, ValType} -> [list_to_atom(ValType)];
-		TupleType -> [list_to_atom(X) || X <- tuple_to_list(TupleType)]
-	end,
-	Start = case postvar(A,"start") of
-		undefined -> [];
-		{ok, ValStart} -> [list_to_integer(ValStart)];
-		TupleStart -> [list_to_integer(X) || X <- tuple_to_list(TupleStart)]
-	end,
-	End = case postvar(A,"end") of
-		undefined -> [];
-		{ok, ValEnd} -> [list_to_integer(ValEnd)];
-		TupleEnd -> [list_to_integer(X) || X <- tuple_to_list(TupleEnd)]
-	end,
-	Arrival = case postvar(A,"arrival") of
-		undefined -> [];
-		{ok, ValArrival} -> [list_to_integer(ValArrival)];
-		TupleArrival -> [list_to_integer(X) || X <- tuple_to_list(TupleArrival)]
-	end,
-	{ok, O} = postvar(A,"origin"),
-	{ok, D} = postvar(A,"destination"),
-	{ok, K} = postvar(A,"k"),
-	S == no_sim orelse simulate_traffic(Vehicles, Type, Start, End, Arrival, list_to_atom(O), list_to_atom(D), list_to_integer(K), Upstream),
-	{Lengths, Paths} = lists:unzip(modum_proxy:get_k_shortest_path(list_to_atom(O), list_to_atom(D), list_to_integer(K))),
-	Ids = lists:flatten(io_lib:format("~p", [paths_to_ids(Paths)])), %  [ atom_to_list(Id) || Id <- Path ] || Path <- Paths ]]
-	Routes = lists:flatten(io_lib:format("~p", [paths_to_lat_lon(Paths)])),
-	Names = lists:flatten(io_lib:format("~p", [paths_to_names(Paths)])),
-	Origin = lists:flatten(io_lib:format("~p", [id_to_lat_lon(list_to_atom(O))])),
-	Destination = lists:flatten(io_lib:format("~p", [id_to_lat_lon(list_to_atom(D))])),
-	OName = node_holon:get_description(list_to_atom(O)),
-	DName = node_holon:get_description(list_to_atom(D)),
-	Ls = lists:flatten(io_lib:format("~p", [Lengths])),
-	[{ssi,"header.ssi", "%", [{"title", "MECA KU Leuven KSP Result"}]},{ssi,"modum.ssi","%",[]},{ssi,"ksp_post.ssi", "%",[{"paths", base64:encode_to_string(lists:flatten(io_lib:write(Paths)))}, {"names", Names}, {"routes", Routes}, {"lengths", Ls}, {"ids", Ids}, {"k",K}, {"oid", O}, {"did", D}, {"oname", OName}, {"dname", DName},{"origin",Origin},{"destination",Destination}]},{ssi,"footer.ssi", "%", []}].
-
+	% S = case postvar(A,"simulate") of
+		% undefined -> no_sim;
+		% _ -> sim
+	% end,
+	% Upstream = case postvar(A, "upstream") of
+		% undefined -> no_upstream;
+		% _ -> upstream
+	% end,
+	% Vehicles = case postvar(A,"nbrVehicles") of
+		% undefined -> [];
+		% {ok, ValVehicles} -> [list_to_integer(ValVehicles)];
+		% TupleVehicles -> [list_to_integer(X) || X <- tuple_to_list(TupleVehicles)]
+	% end,
+	% Type = case postvar(A, "type") of
+		% undefined -> [];
+		% {ok, ValType} -> [list_to_atom(ValType)];
+		% TupleType -> [list_to_atom(X) || X <- tuple_to_list(TupleType)]
+	% end,
+	% Start = case postvar(A,"start") of
+		% undefined -> [];
+		% {ok, ValStart} -> [list_to_integer(ValStart)];
+		% TupleStart -> [list_to_integer(X) || X <- tuple_to_list(TupleStart)]
+	% end,
+	% End = case postvar(A,"end") of
+		% undefined -> [];
+		% {ok, ValEnd} -> [list_to_integer(ValEnd)];
+		% TupleEnd -> [list_to_integer(X) || X <- tuple_to_list(TupleEnd)]
+	% end,
+	% Arrival = case postvar(A,"arrival") of
+		% undefined -> [];
+		% {ok, ValArrival} -> [list_to_integer(ValArrival)];
+		% TupleArrival -> [list_to_integer(X) || X <- tuple_to_list(TupleArrival)]
+	% end,
+	% {ok, O} = postvar(A,"origin"),
+	% {ok, D} = postvar(A,"destination"),
+	% {ok, K} = postvar(A,"k"),
+	% S == no_sim orelse simulate_traffic(Vehicles, Type, Start, End, Arrival, list_to_atom(O), list_to_atom(D), list_to_integer(K), Upstream),
+	% {Lengths, Paths} = lists:unzip(modum_proxy:get_k_shortest_path(list_to_atom(O), list_to_atom(D), list_to_integer(K))),
+	% Ids = lists:flatten(io_lib:format("~p", [paths_to_ids(Paths)])), %  [ atom_to_list(Id) || Id <- Path ] || Path <- Paths ]]
+	% Routes = lists:flatten(io_lib:format("~p", [paths_to_lat_lon(Paths)])),
+	% Names = lists:flatten(io_lib:format("~p", [paths_to_names(Paths)])),
+	% Origin = lists:flatten(io_lib:format("~p", [id_to_lat_lon(list_to_atom(O))])),
+	% Destination = lists:flatten(io_lib:format("~p", [id_to_lat_lon(list_to_atom(D))])),
+	% OName = node_holon:get_description(list_to_atom(O)),
+	% DName = node_holon:get_description(list_to_atom(D)),
+	% Ls = lists:flatten(io_lib:format("~p", [Lengths])),
+	Center = [52.95319, -1.1479], % Nottingham city centre
+	{Links, Nodes} = modum_proxy:get_status_info(),
+	Names_Ids = lists:usort(lists:zip([node_holon:get_description(X) || X <- Nodes], [atom_to_list(X) || X <- Nodes])),
+	NodeNames = [N || {N,_} <- Names_Ids],
+	NodeIds = [I || {_,I} <- Names_Ids],
+	[{ssi,"header.ssi", "%", [{"title", "MECA KU Leuven KSP Result"}]},{ssi,"modum.ssi","%",[]},{ssi,"ksp_post.ssi","%",[{"center", lists:flatten(io_lib:format("~p", [Center]))},{"nodeNames", lists:flatten(io_lib:format("~p", [NodeNames]))}, {"nodeIds", lists:flatten(io_lib:format("~p", [NodeIds]))}]},{ssi,"footer.ssi", "%", []}].
+% {ssi,"ksp_post.ssi", "%",[{"paths", base64:encode_to_string(lists:flatten(io_lib:write(Paths)))}, {"names", Names}, {"routes", Routes}, {"lengths", Ls}, {"ids", Ids}, {"k",K}, {"oid", O}, {"did", D}, {"oname", OName}, {"dname", DName},{"origin",Origin},{"destination",Destination}]},
 simulate_traffic([V | Vs], [T | Ts], [S | Ss], [E | Es], [_A | As], O, D, K, no_upstream) ->
 	io:format("Simulating ~w vehicles of type ~w and departing from ~w to ~w between ~w and ~w.~n", [V, T, O, D, S, E]),
 	core_test:create_vehicles(V,{departure_time, {S,E}}, {O,D,K}, T),

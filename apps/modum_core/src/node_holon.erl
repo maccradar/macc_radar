@@ -38,25 +38,16 @@
 -define(DELAY, 300000).
 
 get_description(Id) ->
-	Id ! {state, self()},
-	Info = receive
-		{?reply, state, S} -> S
-	end,
-	Info#nodeState.desc.
+	{?reply, state, S} = gen_server:call(Id, state, ?callTimeout),
+	S#nodeState.desc.
 
 get_coordinates(Id) ->
-	Id ! {state, self()},
-	Info = receive
-		{?reply, state, S} -> S
-	end,
-	Info#nodeState.coordinates.
+	{?reply, state, S} = gen_server:call(Id, state, ?callTimeout),
+	S#nodeState.coordinates.
 
 get_distance(Id, {Lat1,Lon1}) ->
-	Id ! {state, self()},
-	Info = receive
-		{?reply, state, S} -> S
-	end,
-	[{Lat2,Lon2}] = Info#nodeState.coordinates,
+	{?reply, state, S} = gen_server:call(Id, state, ?callTimeout),
+	[{Lat2,Lon2}] = S#nodeState.coordinates,
 	math:pow(Lat1-Lat2,2) + math:pow(Lon1-Lon2,2).
 	
 get_turning_fractions(Id) ->
@@ -93,6 +84,8 @@ handle_call(turning_fractions, _From, S=#nodeBeing{state=#nodeState{turningFract
 	{reply, {?reply, turning_fractions, dict:to_list(TF)}, S};
 handle_call(connections, _From, S=#nodeBeing{state=#nodeState{connections=C}}) ->
 	{reply, {?reply, connections, C}, S};
+handle_call(state, _From, NB=#nodeBeing{state=S}) ->
+	{reply, {?reply, state, S}, NB};
 handle_call(stop, _From, S=#nodeBeing{}) ->
     {stop, normal, ok, S};
 handle_call(_Message, _From, S) ->

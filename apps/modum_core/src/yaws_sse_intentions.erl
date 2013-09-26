@@ -69,7 +69,10 @@ out(A) ->
 
 init([Arg]) ->
     process_flag(trap_exit, true),
-	P = base64:decode_to_string(Arg#arg.appmoddata),
+	ODK = base64:decode_to_string(Arg#arg.appmoddata),
+	[O,D,K] = string:tokens(ODK,","),
+	P = modum_proxy:get_k_shortest_path(list_to_atom(O),list_to_atom(D),list_to_integer(K)),
+	io:format("paths: ~p~n", [P]),
 	{ok, #state{sock=Arg#arg.clisock, paths=P}}.
 
 handle_call(_Request, _From, State) ->

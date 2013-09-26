@@ -17,8 +17,8 @@
 	
 	for(var i = 0; i < options.length; i++) {
 		var el = document.createElement("option");
-		el.textContent = options[i] + " (" + values[i] + ")";
-		el.value = values[i];
+		el.textContent = values[i];
+		el.value = options[i];
 		l.appendChild(el);
 	} 
 </script>

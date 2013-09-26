@@ -14,3 +14,8 @@ setup() ->
 consistency_test() ->
 	setup(),
 	?assertMatch({reply,{check_consistency,nodes},true}, gen_server:call(modum_proxy, {check_consistency,nodes})).
+	
+% distance_test() ->
+	% setup(),
+	% {Links, Nodes} = modum_proxy:get_status_info(),
+	% ?assertEqual(

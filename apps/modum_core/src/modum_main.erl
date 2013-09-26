@@ -197,7 +197,7 @@ parse_map(MapData) ->
 			{[#connection{from=list_to_atom(From), to=list_to_atom(To)} | ConnectionsList],LC2,Id2}
 					end,
 					{[],LinkConnections, list_to_atom(Id)}, LP),
-			  NewCoords = [{Lat,Lon} || #coordinatesType{lat=Lat, lon=Lon} <- Coords],
+			  NewCoords = [{list_to_float(Lat),list_to_float(Lon)} || #coordinatesType{lat=Lat, lon=Lon} <- Coords],
 			  NewNode = #nodeState{id=element(3,LF), desc=Desc, connections=element(1,LF)++get_connections(element(3,LF),NodeIn,NodeOut), coordinates=NewCoords},
 			  NewNodeDict = dict:store(element(3,LF),NewNode,NodeDict),
 			  {NewNodeDict, update_node(?node_in,NewNode,NodeIn), update_node(?node_out,NewNode,NodeOut),element(2,LF)}

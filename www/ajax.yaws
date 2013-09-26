@@ -13,12 +13,50 @@ out(A) ->
     A2=A#arg{state = [{ip, IP}]},
     yaws_rpc:handler_session(A2, {?MODULE, callback}).
 
-callback([{ip, IP}] = _State, {call, closest_node, Value} = _Request, Session) ->
-	io:format("~p~n",[Value]),
-	{array, [{struct, [{"lat", Lat}, {"lon", Lon}]}]} = Value,
 	
+callback([{ip, IP}] = _State, {call, run_simulation, {array,[{struct,Value}]}} = _Request, Session) ->
+	io:format("Running simulation with following parameters:~n~p~n", [Value]),
+	[	{"simulate", S}, 
+		{"upstream", Upstream},
+		{"nbrVehicles", {array, Vehicles}},
+		{"type", {array, Type}},
+		{"start", {array, Start}},
+		{"end", {array, End}},
+		{"arrival", {array, Arrival}},
+		{"origin", {array, [OName, O]}},
+		{"destination", {array, [DName, D]}},
+		{"k", K}
+	] = Value,
+	list_to_atom(S) == no_sim orelse simulate_traffic(Vehicles, [list_to_atom(X) || X <- Type], Start, End, Arrival, list_to_atom(O), list_to_atom(D), K, list_to_atom(Upstream)),
+	
+	case modum_proxy:get_k_shortest_path(list_to_atom(O), list_to_atom(D), K) of
+		failure -> {true, 0, Session, {response, "failure"}};
+		Result -> 	{Lengths, Paths} = lists:unzip(Result),
+					Ids = paths_to_ids(Paths),
+					Routes = paths_to_lat_lon(Paths),
+					Names = paths_to_names(Paths),
+					Origin = id_to_lat_lon(list_to_atom(O)),
+					Destination = id_to_lat_lon(list_to_atom(D)),
+					{true, 0, Session, {response, {array, [{struct, [	{"names", {array, Names}},
+														{"routes", {array, Routes}},
+														{"lengths", {array, Lengths}},
+														{"ids", {array, Ids}},
+														{"k",K},
+														{"oid", O},
+														{"did", D},
+														{"oname", OName},
+														{"dname", DName},
+														{"origin",Origin},
+														{"destination",Destination},
+														{"simulation", S}]}]}}}
+	end;
+callback([{ip, IP}] = _State, {call, closest_node, Value} = _Request, Session) ->
+	{array, [{struct, [{"lat", Lat}, {"lon", Lon}]}]} = Value,
+	NodeId = modum_proxy:get_closest_node({Lat, Lon}),
+	NodeDesc = node_holon:get_description(NodeId),
+	io:format("closest node: ~w, ~p~n", [NodeId, NodeDesc]),
+	{true, 0, Session, {response, {array, [atom_to_list(NodeId), NodeDesc]}}};
 callback([{ip, IP}] = _State, {call, forecasts, Value} = _Request, Session) ->
-	io:format("~p~n",[Value]),
 	{array,[{struct,[{"time", Time},{"roads", {array, Roads}}]}]} = Value,
 	LinkIds = lists:flatten(lists:map(fun(Road) -> modum_proxy:get_links_of_type(Road) end,Roads)),
 	F = fun(LinkId) ->
@@ -36,4 +74,48 @@ callback([{ip, IP}] = _State, {call, forecasts, Value} = _Request, Session) ->
 callback([{ip, IP}] = _State, {call, kill_simulation, _Value} = _Request, Session) ->
 	[supervisor:terminate_child(vehicle_holon_sv, Child) || {_, Child,_,_} <- supervisor:which_children(vehicle_holon_sv)],
 	{true, 0, Session, {response,  "Simulation ended." }}.
+	
+simulate_traffic([V | Vs], [T | Ts], [S | Ss], [E | Es], [_A | As], O, D, K, no_upstream) ->
+	io:format("Simulating ~w vehicles of type ~w and departing from ~w to ~w between ~w and ~w.~n", [V, T, O, D, S, E]),
+	core_test:create_vehicles(V,{departure_time, {S,E}}, {O,D,K}, T),
+	simulate_traffic(Vs,Ts,Ss,Es,As,O,D,K, no_upstream);
+simulate_traffic([V | Vs], [T | Ts], [_S | Ss], [_E | Es], [A | As], O, D, K, upstream) ->
+	io:format("Simulating ~w vehicles of type ~w and departing from ~w to ~w with upstream search arrival time ~w.~n", [V, T, O, D, A]),
+	core_test:create_vehicles(V, {arrival_time, A}, {O,D,K}, T),
+	simulate_traffic(Vs,Ts,Ss,Es,As,O,D,K, upstream);	
+simulate_traffic([],[],[],[],[], _O,_D,_K,_) ->
+	io:format("Finished initialization of vehicles.~n",[]).
+	
+id_to_lat_lon(Id) ->
+	[{Lat, Lon}] = node_holon:get_coordinates(Id),
+	[Lat, Lon].
+	
+odds(L) -> 
+	L2 = lists:zip(lists:seq(1, length(L)), L),
+    [A || {Ai, A} <- L2, Ai rem 2 == 1].
+
+evens(L) ->
+	L2 = lists:zip(lists:seq(1, length(L)), L),
+	[A || {Ai, A} <- L2, Ai rem 2 == 0].
+
+paths_to_ids([P | Paths]) ->
+	Links = evens(P),
+	Ids = lists:map(fun atom_to_list/1, Links),
+	[Ids | paths_to_ids(Paths)];
+paths_to_ids([]) ->
+	[].
+	
+paths_to_lat_lon([P | Paths]) ->
+	Nodes = odds(P),	
+	Route = lists:map(fun id_to_lat_lon/1,Nodes),
+	[Route | paths_to_lat_lon(Paths)];
+paths_to_lat_lon([]) ->
+	[].
+	
+paths_to_names([P | Paths]) ->
+	Links = evens(P),
+	Route = lists:map(fun link_holon:get_description/1, Links),
+	[Route | paths_to_names(Paths)];
+paths_to_names([]) ->
+	[].
 </erl>

@@ -182,12 +182,14 @@ path_length(Graph,[First | Tail]) ->
 	{_First, Length} = lists:foldl( fun(T,{F,TD})-> {T,dist_between(Graph,F,T)+TD} end,{First,0},Tail),
 	Length.
 
-
+check_paths(_, failure) ->
+	io:format("No paths could be found!"),
+	failure;
 check_paths(Graph,Paths) ->
 	Z = lists:zip([path_length(Graph,P) || P <- Paths], Paths),
 	Z =:= lists:sort(Z) orelse io:format("K Paths are not in increasing order: ~w~n", [Z]),
 	lists:sort(Z).
-	
+
 yen(Graph, Source, Sink, K) ->
 	% Determine the shortest path from the source to the sink.
 	FirstPath = astar(Graph, Source, Sink),
