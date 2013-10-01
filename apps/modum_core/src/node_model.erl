@@ -152,12 +152,17 @@ redistribute_flows(Si,Fij,Rj,Ci,Cij,Uj,J,Qij)->
 			redistribute_flows(Si,Fij,Rup,Ci,Cij,Uup,Jup,Qup)
 	end.
 
+% 4.4 numerical example thesis ruben p 59
 test_sub(0)->
 	void;
 test_sub(N)->
+	% turning fractions F
 	F = [{1,5,0/1000},{1,6,100/1000},{1,7,300/1000},{1,8,600/1000},{2,5,100/2000},{2,6,0/2000},{2,7,300/2000},{2,8,1600/2000},{3,5,125/1000},{3,6,125/1000},{3,7,0/1000},{3,8,750/1000},{4,5,118/2000},{4,6,941/2000},{4,7,941/2000},{4,8,0/2000}],
+	% incoming flow S
 	S = [{1,500},{2,2000},{3,800},{4,1700}],
+	% outgoing flow R
 	R = [{5,1000},{6,2000},{7,1000},{8,2000}],
+	% constraints C
 	C= [{1,1000},{2,2000},{3,1000},{4,2000}],
 	redistribute_flows(S,F,C,R),
 	test_sub(N-1).

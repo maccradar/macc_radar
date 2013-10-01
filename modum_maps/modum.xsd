@@ -200,7 +200,7 @@
     </xs:complexType>
   </xs:element>
 
-<xs:element name="forecastResponse">
+  <xs:element name="forecastResponse">
     <xs:complexType>
 	<xs:sequence>
       <xs:element name="link" type="linkForecastType" minOccurs="1" maxOccurs="unbounded"/>
@@ -208,7 +208,7 @@
     </xs:complexType>
   </xs:element>
 
-<xs:element name="userRequest">
+  <xs:element name="userRequest">
     <xs:complexType>
 	<xs:sequence>
     <xs:element name="userId" type="xs:string" />
@@ -219,13 +219,13 @@
     </xs:complexType>
   </xs:element>
 
-<xs:element name="userResponse">
+  <xs:element name="userResponse">
 	<xs:complexType>
 	<xs:sequence>
     <xs:element name="userId" type="xs:string" minOccurs="1" />
 	</xs:sequence>
 	</xs:complexType>
-</xs:element>
+  </xs:element>
 </xs:schema>
 
 <xs:complextType name ="busStopType">

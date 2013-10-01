@@ -44,7 +44,7 @@
           sock,
           yaws_pid,
           timer,
-		  road_types
+		  args
          }).
 
 out(A) ->
@@ -69,7 +69,7 @@ out(A) ->
 
 init([Arg]) ->
     process_flag(trap_exit, true),	
-	{ok, #state{sock=Arg#arg.clisock, road_types=yaws_api:parse_query(Arg)}}.
+	{ok, #state{sock=Arg#arg.clisock, args=yaws_api:parse_query(Arg)}}.
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -84,12 +84,13 @@ handle_info({ok, YawsPid}, State) ->
 handle_info({discard, _YawsPid}, State) ->
     %% nothing to do
     {stop, normal, State};
-handle_info(tick, #state{sock=Socket, road_types=RoadTypes}=State) ->
-	Roads = [R || {R,"1"} <- RoadTypes],
-    io:format("Sending density for links of type ~w~n",[Roads]),
+handle_info(tick, #state{sock=Socket, args=Args}=State) ->
+	Roads = [R || {R,"1"} <- Args],
+	[Time] = [T || {"time", T} <- Args],
+    io:format("Sending density for links of type ~p on time ~p~n",[Roads, Time]),
 	LinkIds = lists:flatten(lists:map(fun(Road) -> modum_proxy:get_links_of_type(Road) end,Roads)),
 	F = fun(LinkId) ->
-		LinkId ! {get_density, current, discrete, self()},
+		LinkId ! {get_density, list_to_integer(Time), discrete, self()},
 		Data = 
 			receive
 				{density, LinkId, {Coordinates,Density}} -> 	

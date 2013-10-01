@@ -213,15 +213,16 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 							 % io:format("CF_B undefined. not propagating flow down~n"),
 							 % {noreply, LB};
 				{CF_B, CF_E}->MaxGrad = fundamental_diagram:c(FD),
-							  CF_B1 =  link_model:accommodate_max_capacity( CF_B, MaxGrad),
-							  CF_E1 = link_model:propagate_flow(down,CF_B1, LB),
+		%%					  CF_B1 =  link_model:accommodate_max_capacity( CF_B, MaxGrad),
+							  CF_E1 = link_model:propagate_flow(down,CF_B, LB),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=CF_E}),
-							  NewLB1 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B1,cf_e=CF_E1}},  
-							  UPContraint = link_model:propagate_flow(up,CF_E1, NewLB1),
+		%%					  NewLB1 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B1,cf_e=CF_E1}},  
+		%%					  UPContraint = link_model:propagate_flow(up,CF_E1, NewLB1),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=UPContraint}),
-							  NewCF_B = cumulative_flow:constrain_cf(CF_B1, UPContraint),
+		%%					  NewCF_B = cumulative_flow:constrain_cf(CF_B1, UPContraint),
+							  CF_E2 = link_model:accommodate_max_capacity(CF_E1, MaxGrad),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=NewCF_B}),
-							  NewLB2 = NewLB1#linkBeing{blackboard=BB#blackboard{cf_b=NewCF_B,cf_e=CF_E1}}, 
+							  NewLB2 = NewLB1#linkBeing{blackboard=BB#blackboard{cf_b=CF_B,cf_e=CF_E2}}, 
 		%%					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=NewCF_B,cf_end=CF_E}),
 							  ID ! {updateBeing, NewLB2}
 			end

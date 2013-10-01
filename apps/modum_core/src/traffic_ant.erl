@@ -170,7 +170,6 @@ history_to_solution(History)->
     {Solution,_} = lists:mapfoldr(FixScenario_NextResource,?undefined,Solution0),
     Solution.
                       
-% TODO: klopt dit nog? intention ant starts at the end of the CurrentResource link at CurrentTime. CurrentResource should then not be part of the solution.
 create_intention_ant(CurrentTime, CurrentLocation, VehicleId, Solution) ->
 	{SolutionDict, SolutionSize} = lists:foldl(fun(S,{D,K}) -> {dict:store(K, S, D), K+1} end, {dict:new(),0}, Solution),
 	AntState = #antState{location=CurrentLocation,vehicleId=VehicleId, time=CurrentTime},
