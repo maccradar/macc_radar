@@ -77,8 +77,11 @@
 {
 	bb_b										::any(),
 	bb_e										::any(),
+	bb_flow										::any(),
 	cf_b										::any(),
-	cf_e										::any()
+	cf_e										::any(),
+	cf_flow										::any()
+	
 }).
 
 -record(location,
@@ -187,8 +190,8 @@
 -record(antState,
 {
  	location			=#location{}			::#location{},
-	vehicleId									::atom() | pid(),
-	time				=?undefined				::float() | ?undefined
+	creatorId			=?undefined				::atom() | pid(),
+	data				=?undefined				::any()
 }).
 
 % defines a generic scenario, containing a time, ant state and boundary condition

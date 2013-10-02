@@ -83,9 +83,10 @@ init([LinkState]) ->
 	%-record(linkBeing, {state=#linkState{},blackboard,models=#models{}}).
 	BB_b = bb_trafficflow:create("BB_b_"++atom_to_list(LinkState#linkState.id)),
 	BB_e = bb_trafficflow:create("BB_e_"++atom_to_list(LinkState#linkState.id)),
+	BB_flow = bb_ets:create("BB_flow_"++atom_to_list(LinkState#linkState.id)),
 	TTM = (fun(TimeBegin,LB) -> link_model:end_time(TimeBegin,LB) end),
 	STM = (fun(TimeEnd,LB) -> link_model:start_time(TimeEnd,LB) end),
-	FD = fundamental_diagram:init(city,LinkState#linkState.maxAllowedSpeed),
+	FD = fundamental_diagram:init({city,LinkState#linkState.maxAllowedSpeed, LinkState#linkState.numLanes}),
 	M = #models{fd=FD, ttm=TTM, stm=STM},
 	LinkBeing = #linkBeing{state=LinkState,blackboard=#blackboard{bb_b=BB_b,bb_e=BB_e},models=M},
     init_ets_history(atom_to_list(LinkState#linkState.id), self()),
@@ -222,7 +223,7 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 		%%					  NewCF_B = cumulative_flow:constrain_cf(CF_B1, UPContraint),
 							  CF_E2 = link_model:accommodate_max_capacity(CF_E1, MaxGrad),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=NewCF_B}),
-							  NewLB2 = NewLB1#linkBeing{blackboard=BB#blackboard{cf_b=CF_B,cf_e=CF_E2}}, 
+							  NewLB2 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B,cf_e=CF_E2}}, 
 		%%					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=NewCF_B,cf_end=CF_E}),
 							  ID ! {updateBeing, NewLB2}
 			end
@@ -272,7 +273,7 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
     {stop, normal, Reason, State};
 % callback to handle scenario message. This is used to request the execution of a scenario on the link holon.
 % input: {ExecutionType, Scenario, SenderId}
-%TODO add messagetag (avoid matching other messages)
+% TODO add messagetag (avoid matching other messages)
 handle_info(Message = {_,_Scenario,_SenderId}, LB) ->
 	execution(Message,LB),
 	{noreply, LB};
@@ -328,7 +329,7 @@ execution({execute, #scenario{timeSlot={Time,_}}, SenderId}, LB=#linkBeing{state
 		ET when ((is_number(ET)) and (ET > Time)) -> SenderId ! {?reply,execute, ET};
 		T -> io:format("end time is not calculated correctly ~w~n",[T])
 	end;
-execution({proclaim, #scenario{timeSlot={Time,_},antState=#antState{vehicleId=VehicleId}},SenderId}, LB=#linkBeing{state=#linkState{id=Id},blackboard=B,models=M}) ->
+execution({proclaim, #scenario{timeSlot={Time,_},antState=#antState{creatorId=VehicleId}},SenderId}, LB=#linkBeing{state=#linkState{id=Id},blackboard=B,models=M}) ->
 	% add arrival time to blackboard
  	pheromone:create([B#blackboard.bb_b], ?evaporationTime,#vehicle_info{vehicle=VehicleId, arrival_time=Time,data=void}),
 	% apply travel time model  
@@ -345,5 +346,6 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, LB=#linkBe
 			io:format("start time for link ~w: ~w~n",[Id,ET]),
 			SenderId ! {?reply,explore_upstream, ET};
 		T -> io:format("start time is not calculated correctly ~w~n",[T])
-	end.
-
+	end;
+execution({proclaim_flow, {Id,CF}, SenderId}, LB=#linkBeing{blackboard=B}) ->
+	ok.

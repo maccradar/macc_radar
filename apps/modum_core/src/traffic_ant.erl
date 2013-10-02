@@ -39,9 +39,9 @@
 -include_lib("util/include/debug.hrl").
 
 create_explorer_ant(Type = random,CurrentTime, CurrentLocation, Destination, VehicleId) ->
-	AntState = #antState{location=CurrentLocation,vehicleId=VehicleId, time=CurrentTime},
+	AntState = #antState{location=CurrentLocation,creatorId=VehicleId, data=CurrentTime},
 	CreateScenario = 
-		(fun(Cur_AntState=#antState{location=Current,time=Time}, History) ->
+		(fun(Cur_AntState=#antState{location=Current,data=Time}, History) ->
 			case Current#location.resource == Destination#location.resource of % check if destination has been reached.
 				true ->
 					io:format("Destination reached~n"),
@@ -61,7 +61,7 @@ create_explorer_ant(Type = random,CurrentTime, CurrentLocation, Destination, Veh
 	ant:create(#ant{createScenario=CreateScenario,executeScenario=ExecuteScenario,state=AntState,history=[],hopLimit=10000},fun()-> random:seed(erlang:now()) end);
 
 create_explorer_ant(Type=heuristic, CurrentTime, CurrentLocation, Destination=#location{resource=DestResource}, VehicleId) ->
-	AntState = #antState{location=CurrentLocation,vehicleId=VehicleId, time=CurrentTime},
+	AntState = #antState{location=CurrentLocation,creatorId=VehicleId, data=CurrentTime},
 	DestResource ! {downstream_point,self()},
 	DestPoint = 
 		receive
@@ -70,7 +70,7 @@ create_explorer_ant(Type=heuristic, CurrentTime, CurrentLocation, Destination=#l
 		end,
 	io:format("Destination ~w has point ~w~n",[Destination,DestPoint]),
 	CreateScenario = 
-		(fun(Cur_AntState=#antState{location=Current,time=Time}, History) -> 
+		(fun(Cur_AntState=#antState{location=Current,data=Time}, History) -> 
 			%io:format("Current: ~w, destination: ~w~n",[Current,Destination]),
 			CurResource = Current#location.resource,
 			case CurResource of % check if destination has been reached.
@@ -115,8 +115,8 @@ create_explorer_ant(Type=heuristic, CurrentTime, CurrentLocation, Destination=#l
 	ant:create(#ant{createScenario=CreateScenario,executeScenario=ExecuteScenario,state=AntState,history=[],hopLimit=100},fun()-> random:seed(now()) end);
 create_explorer_ant(Type={ksp,Path},CurrentTime, CurrentLocation, Destination, VehicleId) ->
 	%io:format("Creating explorer ant with path ~w~n", [Path]),
-	AntState = #antState{location=CurrentLocation,vehicleId=VehicleId, time=CurrentTime},
-	CreateScenario = (fun(Cur_AntState=#antState{location=Current,time=Time}, History) -> 
+	AntState = #antState{location=CurrentLocation,creatorId=VehicleId, data=CurrentTime},
+	CreateScenario = (fun(Cur_AntState=#antState{location=Current,data=Time}, History) -> 
 							  case Current#location.resource == Destination#location.resource of % check if destination has been reached.
 								  true ->
 										%io:format("Explorer reached destination!~n"),
@@ -129,9 +129,9 @@ create_explorer_ant(Type={ksp,Path},CurrentTime, CurrentLocation, Destination, V
 	ExecuteScenario = execute_scenario(explorer,Type),
 	ant:create(#ant{createScenario=CreateScenario,executeScenario=ExecuteScenario,state=AntState,history=[]},?undefined);
 create_explorer_ant(Type=shortest_path,CurrentTime, CurrentLocation, Destination, VehicleId) ->
-	AntState = #antState{location=CurrentLocation,vehicleId=VehicleId, time=CurrentTime},
+	AntState = #antState{location=CurrentLocation,creatorId=VehicleId, data=CurrentTime},
 	Path = create_shortest_path(CurrentLocation,Destination),
-	CreateScenario = (fun(Cur_AntState=#antState{location=Current,time=Time}, History) -> 
+	CreateScenario = (fun(Cur_AntState=#antState{location=Current,data=Time}, History) -> 
 							  case Current#location.resource == Destination#location.resource of % check if destination has been reached.
 								  true ->
 									  VehicleId ! {newSolution, lists:reverse([{Cur_AntState,?undefined}|History])}, ?undefined; % return the result
@@ -145,8 +145,8 @@ create_explorer_ant(Type=shortest_path,CurrentTime, CurrentLocation, Destination
 create_explorer_ant(Type={upstream,Path},EndTime, CurrentLocation, Destination, VehicleId) ->
 	[_ | P] = lists:reverse(Path),
 	{PathDict, PathSize} = lists:foldl(fun(R,{D,K}) -> {dict:store(K, R, D), K+1} end, {dict:new(),0}, P),
-	AntState = #antState{location=CurrentLocation,vehicleId=VehicleId, time=EndTime},
-	CreateScenario = (fun(Cur_AntState=#antState{location=Current,time=Time}, History) -> 
+	AntState = #antState{location=CurrentLocation,creatorId=VehicleId, data=EndTime},
+	CreateScenario = (fun(Cur_AntState=#antState{location=Current,data=Time}, History) -> 
 							   case Current#location.resource == Destination#location.resource of % check if destination has been reached.
 								  true ->
 									  io:format("Upstream Explorer reached destination!~n"),
@@ -161,9 +161,9 @@ create_explorer_ant(Type={upstream,Path},EndTime, CurrentLocation, Destination, 
 	ant:create(#ant{createScenario=CreateScenario,executeScenario=ExecuteScenario,state=AntState,history=[]},?undefined).	
 
 history_to_solution(History)->
-	FixScenario_StartTime = fun ({State = #antState{time = T},Scenario = #scenario{timeSlot = {_,E}}},ST) ->
-									{{State#antState{time = ST},Scenario#scenario{timeSlot = {ST,E}}},T};
-                                ({#antState{time = T},_},_) ->
+	FixScenario_StartTime = fun ({State = #antState{data = T},Scenario = #scenario{timeSlot = {_,E}}},ST) ->
+									{{State#antState{data = ST},Scenario#scenario{timeSlot = {ST,E}}},T};
+                                ({#antState{data = T},_},_) ->
 									{{?undefined,?undefined},T} end,
     {[_|Solution0],_} = lists:mapfoldl(FixScenario_StartTime,?undefined,History),
     FixScenario_NextResource = fun({State = #antState{location = #location{resource = R}},Scenario},NR) -> {{State,Scenario#scenario{boundaryCondition = NR}},R} end,
@@ -172,9 +172,9 @@ history_to_solution(History)->
                       
 create_intention_ant(CurrentTime, CurrentLocation, VehicleId, Solution) ->
 	{SolutionDict, SolutionSize} = lists:foldl(fun(S,{D,K}) -> {dict:store(K, S, D), K+1} end, {dict:new(),0}, Solution),
-	AntState = #antState{location=CurrentLocation,vehicleId=VehicleId, time=CurrentTime},
+	AntState = #antState{location=CurrentLocation,creatorId=VehicleId, data=CurrentTime},
 	
-	CreateScenario = (fun(Cur_AntState = #antState{location=CurLocation,time=Time},History) -> 
+	CreateScenario = (fun(Cur_AntState = #antState{location=CurLocation,data=Time},History) -> 
 							%io:format("CurrentAntState: ~w, history: ~w~n",[Cur_AntState, History]),
 								case dict:fetch(length(History),SolutionDict) of
 											{#antState{location=CurLocation},#scenario{boundaryCondition=NextResource}} -> #scenario{antState=Cur_AntState,timeSlot={Time,?undefined},boundaryCondition=NextResource};
@@ -189,30 +189,30 @@ create_intention_ant(CurrentTime, CurrentLocation, VehicleId, Solution) ->
 
 
 execute_scenario(explorer, _Type) ->
-	fun(Scenario=#scenario{boundaryCondition= NextResource,antState=#antState{location=#location{resource=Rid},vehicleId=Vid}}) ->
+	fun(Scenario=#scenario{boundaryCondition= NextResource,antState=#antState{location=#location{resource=Rid},creatorId=Vid}}) ->
 		Rid ! {execute, Scenario, self()},
 		receive
-			{?reply, execute, EndTime} -> #antState{location=#location{resource=NextResource,position=Rid},vehicleId=Vid,time=EndTime}
+			{?reply, execute, EndTime} -> #antState{location=#location{resource=NextResource,position=Rid},creatorId=Vid,data=EndTime}
 		after 5000 -> io:format("No response from execute request for scenario ~w on resource ~w~n",[Scenario, Rid]), ?undefined
 		end;
 		(?undefined) -> ?undefined
 	end;
 execute_scenario(upstream_explorer, _Type) ->
-	fun(Scenario=#scenario{boundaryCondition= PrevResource,antState=#antState{location=#location{resource=Rid},vehicleId=Vid}}) ->
-	% fun(Scenario=#scenario{boundaryCondition= NextResource,antState=#antState{location=#location{resource=Rid},vehicleId=Vid}}) ->
+	fun(Scenario=#scenario{boundaryCondition= PrevResource,antState=#antState{location=#location{resource=Rid},creatorId=Vid}}) ->
+	% fun(Scenario=#scenario{boundaryCondition= NextResource,antState=#antState{location=#location{resource=Rid},creatorId=Vid}}) ->
 		Rid ! {explore_upstream, Scenario, self()},
 		receive
-			{?reply, explore_upstream, StartTime} -> #antState{location=#location{resource=PrevResource,position=Rid},vehicleId=Vid,time=StartTime}
+			{?reply, explore_upstream, StartTime} -> #antState{location=#location{resource=PrevResource,position=Rid},creatorId=Vid,data=StartTime}
 		after 5000 -> io:format("No response from execute request for scenario ~w on resource ~w~n",[Scenario, Rid]), ?undefined
 		end;
 		(?undefined) -> ?undefined
 	end;
 		
 execute_scenario(intention, _Type) ->
-	fun(Scenario=#scenario{boundaryCondition= NextResource,antState=#antState{location=#location{resource=Rid},vehicleId=Vid}}) ->
+	fun(Scenario=#scenario{boundaryCondition= NextResource,antState=#antState{location=#location{resource=Rid},creatorId=Vid}}) ->
 		Rid ! {proclaim, Scenario, self()},
 		receive
-			{?reply, proclaim, EndTime} -> #antState{location=#location{resource=NextResource,position=Rid},vehicleId=Vid,time=EndTime}
+			{?reply, proclaim, EndTime} -> #antState{location=#location{resource=NextResource,position=Rid},creatorId=Vid,data=EndTime}
 		after 5000 -> io:format("No response from proclaim request for scenario ~w on resource ~w~n",[Scenario, Rid]), ?undefined
 		end;
 		(?undefined) -> ?undefined

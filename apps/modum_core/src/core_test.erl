@@ -30,7 +30,7 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 -module(core_test).
 
--export([test_xmlrpc/5,linkState/1, digraph/0, create_vehicles/4, testShortestPath/1,get_travel_times/1,simulate_traffic/1,test_avg/4, test_yen/1, test_yaws/0, test_detergent_server/0, test_soap/4, test_soap_client/0]).
+-export([current_flow_test/0,test_xmlrpc/5,linkState/1, digraph/0, create_vehicles/4, testShortestPath/1,get_travel_times/1,simulate_traffic/1,test_avg/4, test_yen/1, test_yaws/0, test_detergent_server/0, test_soap/4, test_soap_client/0]).
 
 -include("states.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -109,7 +109,11 @@ dlog_init_test() ->
 
 dlog_test() ->
 	?DLOG("test").
+
 	
+current_flow_test() ->
+	BB = bb_ets:create("BB_test_current_flow"),
+	PhId1 = pheromone:create([BB], 10000, #info{data={linkx_flow,cumul},tags=[flow]}).
 evaporation_test() ->
  VehicleId = vehicle1,
  Time1 = 1000,

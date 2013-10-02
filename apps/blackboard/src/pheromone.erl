@@ -39,7 +39,7 @@
 -include_lib("util/include/debug.hrl").
 
 
-%%timeout in msec...
+%% timeout in msec...
 create(Blackboards,TimeOut,Info)->
 	Pheromone = spawn(?MODULE, loop, [Blackboards,erlang:now(),TimeOut,Info]),
 	register_to_blackboards(Pheromone,Blackboards),

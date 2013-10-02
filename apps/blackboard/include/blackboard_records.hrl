@@ -33,6 +33,6 @@
 -record(vehicle_info,{vehicle=default,arrival_time,data}). % for bb_trafficflow
 
 
-%%TODO check of deze niet in list bucket kan teruggeplaatst worden.
+%% TODO check of deze niet in list bucket kan teruggeplaatst worden.
 -record(bucket,{size=0,list=[],smallest={void,void},largest={void,void}}).
 

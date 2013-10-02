@@ -59,6 +59,5 @@ start(Ant,Init)	->
 loop(Ant=#ant{createScenario=CS, executeScenario=ES,history=H,state=S,hopLimit=HL}) ->
 	Scenario = CS(S,H),
 	NewState = ES(Scenario),
-	%(HL >= length(H)) orelse io:format("History: ~w~n",[[(AS#antState.location)#location.resource || {AS,_} <- H]]),
 	((NewState == ?undefined) or (HL < length(H))) orelse
 	loop(Ant#ant{history=[{S,Scenario}|H],state=NewState}).

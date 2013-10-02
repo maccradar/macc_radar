@@ -102,8 +102,8 @@ handle_info({getSolutions, Pid},VB=#vehicleBeing{blackboard=BB}) ->
 handle_info({getTravelTime, SolutionPid, Pid}, VB) ->
 	[{First,_}|Solution] = (pheromone:get_info(SolutionPid))#info.data,
 	[{Last,_} |_] = lists:reverse(Solution),
-	{FirstTime, _} = First#antState.time,
-	{_,LastTime} = Last#antState.time,
+	{FirstTime, _} = First#antState.data,
+	{_,LastTime} = Last#antState.data,
 	Pid ! {?reply,getTravelTime, LastTime-FirstTime},
 	{noreply, VB};
 
