@@ -35,7 +35,7 @@
 
 -record(k_q,{kc,c,kjam,vf,w}).
 
--export([init/2,init/3,kc/1,c/1,kjam/1,vf/1,q/2,u/2,w/1]).
+-export([init/1,init/3,kc/1,c/1,kjam/1,vf/1,q/2,u/2,w/1]).
 
 init(Kc,C,Kjam) when ((Kc > 0) and (Kjam > Kc)) ->
 	#k_q{kc=Kc,c=C,kjam=Kjam,vf=C/Kc,w=C/(Kjam-Kc)}.
@@ -43,13 +43,20 @@ init(Kc,C,Kjam) when ((Kc > 0) and (Kjam > Kc)) ->
 % using default values for C and Kjam
 % C = # vehicles / second -> in city 1800 / h -> 0.5 / s
 % Kjam = # vehicles / meter -> avg vehicle length of 5 meters results in Kjam of 0.2
-init(city,MaxSpeed) when MaxSpeed > 0 ->
+init({city,MaxSpeed,1}) when MaxSpeed > 0 ->
 	init(0.5/MaxSpeed,0.5,0.2);
 % using default values for C and Kjam
 % C = # vehicles / second -> on highway 2100 / h -> 0.583 / s
 % Kjam = # vehicles / meter -> avg vehicle length of 5 meters results in Kjam of 0.2
-init(highway,MaxSpeed) when MaxSpeed > 0 ->
-	init(0.583/MaxSpeed,0.583,0.2).
+init({highway,MaxSpeed,1}) when MaxSpeed > 0 ->
+	init(0.583/MaxSpeed,0.583,0.2);
+% C = # vehicles / second -> in city 1800 / h / lane -> 0.5 / s / lane
+% Kjam = # vehicles / meter -> avg vehicle length of 5 meters results in Kjam of 0.2 / lane
+init({city, MaxSpeed, NumLanes}) when (MaxSpeed > 0) and (NumLanes > 1) ->
+	init((0.5 * NumLanes)/MaxSpeed,0.5 * NumLanes, 0.2 * NumLanes);	
+init({highway, MaxSpeed, NumLanes}) when (MaxSpeed > 0) and (NumLanes > 1) ->
+	init((0.583 * NumLanes)/MaxSpeed,0.583 * NumLanes, 0.2 * NumLanes).
+
 kc(#k_q{kc=Kc})->
 	Kc.
 c(#k_q{c=C})->
