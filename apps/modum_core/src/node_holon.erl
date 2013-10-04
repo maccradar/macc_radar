@@ -125,6 +125,9 @@ handle_info(Message = {proclaim,_Scenario,_SenderId}, NB) ->
 handle_info(Message = {explore_upstream,_Scenario,_SenderId}, NB) ->
 	execution(Message,NB),
 	{noreply, NB};
+handle_info(Message = {proclaim_flow,_Scenario,_SenderId}, NB) ->
+	execution(Message,NB),
+	{noreply, NB};	
 handle_info({being, Pid}, NB) ->
 	Pid ! {?reply, being, NB},
 	{noreply, NB};
@@ -183,4 +186,7 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, #nodeBeing
 			io:format("start time for node ~w: ~w~n",[Id,ET]),
 			SenderId ! {?reply,explore_upstream, ET};
 		T -> io:format("start time is not calculated correctly ~w~n",[T])
-	end.
+	end;
+execution({proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antState{data=CF}}, SenderId}, NB = #nodeBeing{state=#nodeState{connections = Connections, turningFractions=TurningFractionDict}}) ->
+	TFs = [dict:fetch({From, To},TurningFractionDict) || #connection{from = From, to = To} <- Connections ,From == Previous],
+	SenderId ! {?reply, proclaim_flow, TFs}.

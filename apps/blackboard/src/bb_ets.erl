@@ -67,6 +67,7 @@ loop(Table)->
         terminate->void;%%TODO
 		
 		{insert,Pheromone} -> 
+			% TODO: remove assumption Pheromone info is an #info record!!
 			Info = pheromone:get_info(Pheromone),
 			ets:insert(Table, list_to_tuple([Pheromone|[Info#info.data|Info#info.tags]])),
 							 loop(Table);
@@ -94,4 +95,3 @@ get_pheromones(Blackboard,Tags)->
 				after 2000->get_pheromones(Blackboard,Tags)
 				end
 	end.
-	

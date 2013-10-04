@@ -34,7 +34,7 @@
 -module(traffic_ant).
 
 % public
--export([create_explorer_ant/5, create_intention_ant/4]).
+-export([create_explorer_ant/5, create_intention_ant/4,create_current_flow_ant/4]).
 -include("states.hrl").
 -include_lib("util/include/debug.hrl").
 
@@ -186,7 +186,14 @@ create_intention_ant(CurrentTime, CurrentLocation, VehicleId, Solution) ->
 					  end), 
 	ExecuteScenario = execute_scenario(intention, normal),
 	ant:create(#ant{createScenario=CreateScenario,executeScenario=ExecuteScenario,state=AntState,history=[]}).
-
+create_current_flow_ant(CurrentLocation, NextResource, CreatorId, CumulativeFunction) ->
+	AntState = #antState{location=#location{resource=NextResource,position=?link_in},creatorId=CreatorId,data=CumulativeFunction},
+	CreateScenario = 	(fun(Cur_AntState=#antState{location=L}, _History) ->
+							io:format("Creating current flow ant ~w~n",[L]),
+							#scenario{antState=Cur_AntState,boundaryCondition=CurrentLocation#location.resource}
+						end),
+	ExecuteScenario = execute_scenario(current_flow, normal),
+	ant:create(#ant{createScenario=CreateScenario, executeScenario=ExecuteScenario,state=AntState, history=[]}).
 
 execute_scenario(explorer, _Type) ->
 	fun(Scenario=#scenario{boundaryCondition= NextResource,antState=#antState{location=#location{resource=Rid},creatorId=Vid}}) ->
@@ -214,6 +221,17 @@ execute_scenario(intention, _Type) ->
 		receive
 			{?reply, proclaim, EndTime} -> #antState{location=#location{resource=NextResource,position=Rid},creatorId=Vid,data=EndTime}
 		after 5000 -> io:format("No response from proclaim request for scenario ~w on resource ~w~n",[Scenario, Rid]), ?undefined
+		end;
+		(?undefined) -> ?undefined
+	end;
+execute_scenario(current_flow, _Type) ->
+	fun(Scenario=#scenario{boundaryCondition= PrevResource,antState=#antState{location=Location=#location{resource=Rid},creatorId=Cid}}) ->
+		Rid ! {proclaim_flow, Scenario, self()},
+		receive
+			{?reply, proclaim_flow, IdCFList} ->
+				lists:foreach(fun({Next, CF}) -> create_current_flow_ant(Location, Next, Cid, CF) end, IdCFList), 
+				io:format("Killing current flow ant at ~w~n", [Location]),
+				?undefined
 		end;
 		(?undefined) -> ?undefined
 	end;

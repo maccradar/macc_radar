@@ -88,7 +88,7 @@ init([LinkState]) ->
 	STM = (fun(TimeEnd,LB) -> link_model:start_time(TimeEnd,LB) end),
 	FD = fundamental_diagram:init({city,LinkState#linkState.maxAllowedSpeed, LinkState#linkState.numLanes}),
 	M = #models{fd=FD, ttm=TTM, stm=STM},
-	LinkBeing = #linkBeing{state=LinkState,blackboard=#blackboard{bb_b=BB_b,bb_e=BB_e},models=M},
+	LinkBeing = #linkBeing{state=LinkState,blackboard=#blackboard{bb_b=BB_b,bb_e=BB_e, bb_flow=BB_flow},models=M},
     init_ets_history(atom_to_list(LinkState#linkState.id), self()),
 	{ok, LinkBeing}.
 
@@ -161,6 +161,9 @@ handle_call(state, _From, LB=#linkBeing{state=S}) ->
 	{reply, {?reply, state, S}, LB};
 handle_call(being, _From, LB=#linkBeing{}) ->
 	{reply, {?reply, being, LB}, LB};
+handle_call({flow_pheromone, Id}, _From, LB=#linkBeing{blackboard=#blackboard{bb_flow=BB}}) ->
+	P = get_flow_pheromone(BB, Id),
+	{reply, {?reply, flow_pheromone, P}, LB};
 % default callback for synchronous calls.
 handle_call(_Message, From, S) ->
 	io:format("handle call from ~w ~n ",[From]),
@@ -347,5 +350,22 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, LB=#linkBe
 			SenderId ! {?reply,explore_upstream, ET};
 		T -> io:format("start time is not calculated correctly ~w~n",[T])
 	end;
-execution({proclaim_flow, {Id,CF}, SenderId}, LB=#linkBeing{blackboard=B}) ->
-	ok.
+execution({proclaim_flow, #scenario{antState=#antState{creatorId=Id, data=CF}}, SenderId}, LB=#linkBeing{blackboard=#blackboard{bb_flow=BB},state=#linkState{connection = Connection}}) ->
+	% check if blackboard already has already an entry from the same creatorId
+	P = get_flow_pheromone(BB, Id),
+	% if pheromone is found, evaporate it
+	is_pid(P) andalso pheromone:evaporate(Pheromone,_,[BB]),
+	% add new {linkId, cumulative function} tuple to blackboard
+	pheromone:create([BB], ?evaporationTime, #info{data={Id, CF}, tags=[flow]),
+	% propagate flow down 
+	NewCF = link_model:propagate_flow(down,CF, LB),
+	% send new cumulative function back to current flow ant
+	SenderId ! {?reply, proclaim_flow, [{Connection#connection.to, NewCF}]}.
+
+get_flow_pheromone(Blackboard, Id) ->
+	Blackboard ! {get,{'$1',{Id, '_'},'_'},self()},
+	receive
+		{result_get,[]}->?undefined;
+		{result_get,[[PheromoneId]]} -> Pheromone
+		after 2000-> io:format("Waiting too long for response..."), ?undefined
+	end.

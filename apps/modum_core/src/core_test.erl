@@ -30,7 +30,7 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 -module(core_test).
 
--export([current_flow_test/0,test_xmlrpc/5,linkState/1, digraph/0, create_vehicles/4, testShortestPath/1,get_travel_times/1,simulate_traffic/1,test_avg/4, test_yen/1, test_yaws/0, test_detergent_server/0, test_soap/4, test_soap_client/0]).
+-export([bb_flow_test/0, current_flow_test/0,test_xmlrpc/5,linkState/1, digraph/0, create_vehicles/4, testShortestPath/1,get_travel_times/1,simulate_traffic/1,test_avg/4, test_yen/1, test_yaws/0, test_detergent_server/0, test_soap/4, test_soap_client/0]).
 
 -include("states.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -110,10 +110,31 @@ dlog_init_test() ->
 dlog_test() ->
 	?DLOG("test").
 
-	
 current_flow_test() ->
-	BB = bb_ets:create("BB_test_current_flow"),
-	PhId1 = pheromone:create([BB], 10000, #info{data={linkx_flow,cumul},tags=[flow]}).
+	Link = '-29157766#0',
+	Next = '252273758',
+	C_F11 = cumulative_func:new(0,0),
+	C_F12 = cumulative_func:add_point(5,3, C_F11),
+	traffic_ant:create_current_flow_ant(#location{resource=Link, position=?link_in}, Next, Link, C_F12).
+
+bb_flow_test() ->
+	Link = '-100170062',
+	{?reply, being, Being} = gen_server:call(Link, being, 1000),
+	BB_Flow = (Being#linkBeing.blackboard)#blackboard.bb_flow,
+	io:format("bb_flow: ~w~n",[BB_Flow]),
+	Insert = fun(Iter) -> pheromone:create([BB_Flow], 50000,#info{data={Iter, cf},tags=[flow]}) end,
+	Iterations = lists:seq(1,1000),
+	lists:foreach(Insert, Iterations),
+	Search = fun(Iter) -> 
+		BB_Flow ! {get,{'$1',{Iter, '_'},'_'},self()},
+		receive
+			{result_get,Pheromone}->Pheromone
+		end
+	end,
+	%Pheromone = bb_ets:get(BB_Flow,[flow]),
+	%Search = fun(Iter) -> [CF || [Pid,{Id1,CF}] <-Pheromones, Id1 == Iter] end,
+	lists:foreach(Search, Iterations),
+	ok.
 evaporation_test() ->
  VehicleId = vehicle1,
  Time1 = 1000,
