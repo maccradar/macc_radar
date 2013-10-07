@@ -36,7 +36,7 @@
 -module(cumulative_func).
 
 -include("consts.hrl").
--export([add_point/3,add_points/2,y_x/2,x_y/2,update_point/4,new/2,test/0,next/3,prev/3,first/2,next_segment/3,next_value/3,first_segment/1,prev_segment/3,prev_value/3,cf_to_points/1,to_file/3,segment_at/2,last/2,last_segment/1,size/1,remove_point/2,nextPoint/3,prevPoint/3,shift_from/4,add_segements/2,find_next_gradient_intersection/3,delete_after/3,to_png/3, cfs_to_points/2]).
+-export([update_last_point/4,multiply/3, multiply/4, add_point/3,add_points/2,y_x/2,x_y/2,update_point/4,new/2,test/0,next/3,prev/3,first/2,next_segment/3,next_value/3,first_segment/1,prev_segment/3,prev_value/3,cf_to_points/1,to_file/3,segment_at/2,last/2,last_segment/1,size/1,remove_point/2,nextPoint/3,prevPoint/3,shift_from/4,add_segments/2,find_next_gradient_intersection/3,delete_after/3,to_png/3, cfs_to_points/2]).
 -export_type([func/0]).
 %% representation of a cumulative function (strict ascending monotone function)
 %%     - binary tree mapping x values to segments
@@ -59,13 +59,11 @@ segment_at(X,CF = #func{x_y = X_Y})->
 		{value,S} ->S
 	end.
 
-add_segements([],CF)->
+add_segments([],CF)->
 	CF;
-add_segements([S|T],CF)->
+add_segments([S|T],CF)->
 	NewCF = cumulative_func:add_point(line_segment:get(x2, S), line_segment:get(y2, S), CF),
-	add_segements(T, NewCF).
-
-
+	add_segments(T, NewCF).
 
 find_next_gradient_intersection(X,CF,{X0,Y0,G}) when is_number(X0) and is_number(Y0) and is_number(G)->
 	S = cumulative_func:segment_at(X, CF),
@@ -87,11 +85,7 @@ find_next_gradient_intersection(XStart,S ,CF,{X0,Y0,G},ACC_segment)->
 		{_,_} -> find_next_gradient_intersection(X2seg,cumulative_func:segment_at(X2seg, CF),CF,{X0,Y0,G},line_segment:join(ACC_segment, S))
 	end.
 
-
-
-
-
-%%next point with corresponding segment 
+% next point with corresponding segment 
 nextPoint(Type, T, CF)->
 	case cumulative_func:next(Type, T, CF) of
 		nil -> {element(1,cumulative_func:last(Type,CF)),nil};
@@ -111,6 +105,16 @@ nextXYPoint({X,_Y}, CF)->
 		{{_,Seg},_} -> {line_segment:get(x1, Seg),line_segment:get(y1, Seg)}
 	end.
 
+%% updates an existing point in the cumulative.
+update_last_point(y,LastX,Y_upd,Func=#func{x_y=X_Y,y_x=Y_X})->
+	{X,S_a} = prev(x,LastX,Func),
+	S_a_upd = line_segment:update(y2, Y_upd, S_a),
+	X_Y_u1 = gb_trees:update(X, S_a_upd, X_Y),
+	Y = line_segment:x_y(X, S_a),
+	io:format("Y_X: ~w ~w~n", [Y, Y_X]),
+	Y_X_u1 = gb_trees:delete(Y,Y_X),
+	Y_X_u2 = gb_trees:enter(Y_upd, S_a_upd, Y_X_u1),
+	#func{x_y = X_Y_u1,y_x = Y_X_u2}.
 
 shift_point(y,X,Y,Val,CF)->
 	update_point(y, X, Y+Val, CF).
@@ -119,8 +123,6 @@ shift_from(_,{?undefined,?undefined},_,CF)->
 	CF;
 shift_from(Type,{CurX,CurY},Value,CF)->
 	shift_from(y,nextXYPoint({CurX,CurY},CF), Value, shift_point(Type, CurX, CurY,Value,CF)).
-	
-	
 	
 
 %% returns the largest X value with corresponding segment
@@ -234,8 +236,10 @@ y_x(Y, #func{y_x =Y_X})->
 	end.
 
 %% updates an existing point in the cumulative.
-update_point(y,X,Y_upd,#func{x_y=X_Y,y_x=Y_X})->
-	{value,S_a} = gb_trees:lookup(X, X_Y),
+update_point(y,X,Y_upd,Func=#func{x_y=X_Y,y_x=Y_X})->
+	case gb_trees:lookup(X, X_Y) of 
+		none -> update_last_point(y,X,Y_upd,Func);
+		{value,S_a} ->
 	S_a_upd = line_segment:update(y1, Y_upd, S_a),
 	X_Y_u1 = gb_trees:update(X, S_a_upd, X_Y),
 	Y = line_segment:x_y(X, S_a),
@@ -250,6 +254,7 @@ update_point(y,X,Y_upd,#func{x_y=X_Y,y_x=Y_X})->
 		nil -> Y_X_u1 = gb_trees:delete(Y,Y_X),
 			   Y_X_u2 = gb_trees:enter(Y_upd, S_a_upd, Y_X_u1),
 			   #func{x_y = X_Y_u1,y_x = Y_X_u2}
+	end
 	end.
 
 
@@ -313,11 +318,7 @@ delete_after(X,XLargest,Func = #func{x_y=X_Y,y_x=Y_X}) when X < XLargest ->
 	delete_after(X, element(1, gb_trees:largest(X_Y_up)),#func{x_y=X_Y_up,y_x=Y_X_up});
 delete_after(_X,_XLargest,Func) ->
   Func.
-
-
-														 
-	
-											   
+								   
 remove_point(X,Func=#func{x_y=X_Y,y_x=Y_X})->
 	S = segment_at(X, Func),
 	X_Y_u1 = gb_trees:delete(X, X_Y),
@@ -377,8 +378,6 @@ cfs_to_points([{Name,#func{x_y=X_Y}}|Tail],Acc)->
 	Points = cf_to_points(gb_trees:to_list(X_Y)),
 	cfs_to_points(Tail, [{Name,Points}|Acc]).
 											 
-	
-
 cf_to_points([{X,S}|Tail])->
 	cf_to_points([{X,line_segment:get(y1, S)}],[{X,S}|Tail]).
 cf_to_points(CF_Points,[])->
@@ -386,11 +385,25 @@ cf_to_points(CF_Points,[])->
 cf_to_points(CF_Points,[{_,S}|Tail])->
 	cf_to_points([{line_segment:get(x2, S),line_segment:get(y2, S)}|CF_Points],Tail).
 	
-
+	
+multiply(y, Factor, Func=#func{}) ->
+	{First,_} = first(x, Func),
+	multiply(y, First, Factor, Func).
+multiply(y, nil, Factor, Func) ->
+	{X, _} = last(x, Func),
+	Y = x_y(X, Func),
+	NewY = round(Y * Factor),
+	update_point(y, X, NewY, Func);
+multiply(y, X, Factor, Func=#func{}) ->
+	io:format("multiply y: ~w, ~w, ~p~n",[X,Factor, cf_to_points(gb_trees:to_list(Func#func.x_y))]),
+	Y = x_y(X, Func),
+	NewY = round(Y * Factor),
+	NewCF = update_point(y, X, NewY, Func),
+	io:format("new CF: ~p~n", [cf_to_points(gb_trees:to_list(NewCF#func.x_y))]),
+	NextX = next_value(x,X,NewCF),
+	multiply(y, NextX , Factor, NewCF).
 
 test()->
-
-	
 	C_F11 = new(0,0),
 	C_F12 = add_point(5,3, C_F11),
  	C_F13 = add_point(11, 6, C_F12),
@@ -399,8 +412,13 @@ test()->
 	C_F21 = new(0,0),
 	C_F22 = add_point(5,4, C_F21),
  	C_F23 = add_point(11, 5, C_F22),
-   	C_F24 = add_point(17, 10, C_F23).
+   	C_F24 = add_point(17, 10, C_F23),
 	
-%% 	find_next_intersection(0, C_F14, C_F24).
+	P1 = cf_to_points(gb_trees:to_list(C_F14#func.x_y)),
+	io:format("Before: ~p~n", [P1]),
+	io:format("Last: ~w~n", [gb_trees:lookup(17, C_F14#func.x_y)]),
+	NewCF = multiply(y, 0.5, C_F14),
+	P2 = cf_to_points(gb_trees:to_list(NewCF#func.x_y)),
+	io:format("After: ~p~n", [P2]).
 	
 

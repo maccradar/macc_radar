@@ -354,9 +354,9 @@ execution({proclaim_flow, #scenario{antState=#antState{creatorId=Id, data=CF}}, 
 	% check if blackboard already has already an entry from the same creatorId
 	P = get_flow_pheromone(BB, Id),
 	% if pheromone is found, evaporate it
-	is_pid(P) andalso pheromone:evaporate(Pheromone,_,[BB]),
+	is_pid(P) andalso pheromone:evaporate(P,void,[BB]),
 	% add new {linkId, cumulative function} tuple to blackboard
-	pheromone:create([BB], ?evaporationTime, #info{data={Id, CF}, tags=[flow]),
+	pheromone:create([BB], ?evaporationTime, #info{data={Id, CF}, tags=[flow]}),
 	% propagate flow down 
 	NewCF = link_model:propagate_flow(down,CF, LB),
 	% send new cumulative function back to current flow ant
@@ -366,6 +366,6 @@ get_flow_pheromone(Blackboard, Id) ->
 	Blackboard ! {get,{'$1',{Id, '_'},'_'},self()},
 	receive
 		{result_get,[]}->?undefined;
-		{result_get,[[PheromoneId]]} -> Pheromone
+		{result_get,[[PheromoneId]]} -> PheromoneId
 		after 2000-> io:format("Waiting too long for response..."), ?undefined
 	end.

@@ -188,5 +188,6 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, #nodeBeing
 		T -> io:format("start time is not calculated correctly ~w~n",[T])
 	end;
 execution({proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antState{data=CF}}, SenderId}, NB = #nodeBeing{state=#nodeState{connections = Connections, turningFractions=TurningFractionDict}}) ->
-	TFs = [dict:fetch({From, To},TurningFractionDict) || #connection{from = From, to = To} <- Connections ,From == Previous],
+	TFs = [{To, dict:fetch({From, To},TurningFractionDict)} || #connection{from = From, to = To} <- Connections ,From == Previous],
+	
 	SenderId ! {?reply, proclaim_flow, TFs}.

@@ -120,10 +120,10 @@ accommodate_max_capacity(X,CF,LastX_CF,NewCF,G)->
 										{_,Ylast_min} when Ylast_min > Ylast_orig ->  illegal_state
 									end;
 					Segment -> NewX = line_segment:get(x2, Segment),
-							   NewCF_Up = cumulative_func:add_segements([Segment], NewCF),
+							   NewCF_Up = cumulative_func:add_segments([Segment], NewCF),
 							   accommodate_max_capacity(NewX, CF, LastX_CF, NewCF_Up,  G)
 				end;
-		false -> NewCF_Up = cumulative_func:add_segements([SegAtX], NewCF),
+		false -> NewCF_Up = cumulative_func:add_segments([SegAtX], NewCF),
 				 NewX = line_segment:get(x2, SegAtX),
 				 accommodate_max_capacity(NewX, CF, LastX_CF, NewCF_Up,  G);
 		?undefined -> NewCF

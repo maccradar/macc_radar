@@ -28,9 +28,6 @@
 %  OF SUCH DAMAGE.                                                                                        %
 %                                                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
-%% Author: bgermain
-%% Created: 16-jan.-2013
-%% Description: TODO: Add description to tree_utils
 -module(tree_utils).
 
 -export([test/0,next/2,prev/2]).
@@ -41,7 +38,7 @@
 							 Next :: 'nil'|{term(),term()}.
 
 next({S, T},Key) when S=/=0 -> next(nil,T,Key);
-next({S, _},_) when S==0 -> nil. 
+next({S, _},_) when S==0 -> io:format("S==0"),nil. 
 
 next(nil, {TKey, _, _, nil},Key) when Key == TKey -> nil;
 next(Sol, {TKey, _, _, nil},Key) when Key == TKey-> Sol;
@@ -84,5 +81,5 @@ test()->
 	T8 = gb_trees:enter(10, void, T7),
 
 	%%next(T8,5).
-	%%[next(T8, 0),next(T8, 1),next(T8, 2),next(T8, 3),next(T8, 4),next(T8, 5),next(T8, 6),next(T8, 7),next(T8, 8),next(T8, 9),next(T8, 10),next(T8, 11)].
-	[prev(T8, 0),prev(T8, 1),prev(T8, 2),prev(T8, 3),prev(T8, 4),prev(T8, 5),prev(T8, 6),prev(T8, 7),prev(T8, 8),prev(T8, 9),prev(T8, 10),prev(T8, 11)].
+	[next(T8, 0),next(T8, 1),next(T8, 2),next(T8, 3),next(T8, 4),next(T8, 5),next(T8, 6),next(T8, 7),next(T8, 8),next(T8, 9),next(T8, 10),next(T8, 11)].
+	%%[prev(T8, 0),prev(T8, 1),prev(T8, 2),prev(T8, 3),prev(T8, 4),prev(T8, 5),prev(T8, 6),prev(T8, 7),prev(T8, 8),prev(T8, 9),prev(T8, 10),prev(T8, 11)].

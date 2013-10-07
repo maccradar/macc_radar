@@ -30,7 +30,7 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 -module(core_test).
 
--export([bb_flow_test/0, current_flow_test/0,test_xmlrpc/5,linkState/1, digraph/0, create_vehicles/4, testShortestPath/1,get_travel_times/1,simulate_traffic/1,test_avg/4, test_yen/1, test_yaws/0, test_detergent_server/0, test_soap/4, test_soap_client/0]).
+-export([bb_flow_node_test/0, bb_flow_link_test/0, current_flow_test/0,test_xmlrpc/5,linkState/1, digraph/0, create_vehicles/4, testShortestPath/1,get_travel_times/1,simulate_traffic/1,test_avg/4, test_yen/1, test_yaws/0, test_detergent_server/0, test_soap/4, test_soap_client/0]).
 
 -include("states.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -117,7 +117,7 @@ current_flow_test() ->
 	C_F12 = cumulative_func:add_point(5,3, C_F11),
 	traffic_ant:create_current_flow_ant(#location{resource=Link, position=?link_in}, Next, Link, C_F12).
 
-bb_flow_test() ->
+bb_flow_link_test() ->
 	Link = '-100170062',
 	{?reply, being, Being} = gen_server:call(Link, being, 1000),
 	BB_Flow = (Being#linkBeing.blackboard)#blackboard.bb_flow,
@@ -135,6 +135,14 @@ bb_flow_test() ->
 	%Search = fun(Iter) -> [CF || [Pid,{Id1,CF}] <-Pheromones, Id1 == Iter] end,
 	lists:foreach(Search, Iterations),
 	ok.
+bb_flow_node_test() ->
+	Node = '252273758',
+	Previous = '-29157766#0',
+	CF = void,
+	Node ! {proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antState{data=CF}}, self()},
+	receive
+		{?reply, proclaim_flow, TFs} -> TFs
+	end.
 evaporation_test() ->
  VehicleId = vehicle1,
  Time1 = 1000,
