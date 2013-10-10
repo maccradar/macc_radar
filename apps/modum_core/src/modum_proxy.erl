@@ -168,15 +168,7 @@ handle_call({check_consistency, nodes}, _From, State = #proxyState{nodes=Nodes})
 % default callback for synchronous calls.
 handle_call(_Message, _From, S) ->
     {noreply, S}.
-
-% default callback for casts.
-handle_cast(_Message, S) ->
-    {noreply, S}.
-
-% callback to handle the interval message. This is used to trigger an update request to the UTMC server.
-handle_info(traffic_update, S = #proxyState{model=Model, linkInfoDict=Dict, clients=Clients}) ->
-    [TUC | _] = [C || {N,C} <- Clients, N == ?traffic_update_client],
-	{transmit, Response} = gen_server:call(TUC,{transmit, Model}),
+handle_cast({traffic_update_response, Response}, S = #proxyState{model=Model, linkInfoDict=Dict, clients=Clients}) ->
 	NewDict = case Response of
 		?undefined -> Dict;
 		_ -> 	io:format("Received parsed response, updating link states~n"),
@@ -184,6 +176,17 @@ handle_info(traffic_update, S = #proxyState{model=Model, linkInfoDict=Dict, clie
 	end,
 	NewS = S#proxyState{linkInfoDict=NewDict},
     {noreply, NewS};
+% default callback for casts.
+handle_cast(_Message, S) ->
+    {noreply, S}.
+
+% callback to handle the interval message. This is used to trigger an update request to the UTMC server.
+handle_info(traffic_update, S = #proxyState{model=Model, linkInfoDict=Dict, clients=Clients}) ->
+    [TUC | _] = [C || {N,C} <- Clients, N == ?traffic_update_client],
+	%{transmit, Response} = 
+	gen_server:cast(TUC,{transmit, {async, Model}}),
+    {noreply, S};
+	
 % callback to handle the state message. This can be used to request the state of the modum client.
 % the sender pid has to be specified in the message.
 handle_info({state, Pid}, S=#proxyState{}) ->

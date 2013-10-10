@@ -71,21 +71,36 @@ xmlrpc_client() ->
 	end.	
 	
 traffic_update_client() ->
-	fun(Model,#comState{ip=Ip,port=Port}) when is_record(Model,model) ->
-		{ok, ProjectDir} = application:get_env(modum_core,project_dir),
-		{ok, ComDir} = application:get_env(modum_core,com_dir),
+	{ok, ProjectDir} = application:get_env(modum_core,project_dir),
+	{ok, ComDir} = application:get_env(modum_core,com_dir),	
+	fun({async, Model},#comState{ip=Ip,port=Port}) when is_record(Model,model) ->
+		{ok, Request, _} = erlsom:scan_file(filename:join([ProjectDir, ComDir, "modum_updateRequest.xml"]), Model),
+		{ok, Command} = erlsom:write(Request, Model),
+		EncCommand = base64:encode_to_string("<?xml version=\"1.0\" encoding=\"utf-8\" ?>"++Command),
+		{ok, Socket} = gen_tcp:connect(Ip,Port,[{active, false}]),
+		io:format("Request: ~p~n", [Request]),
+		case xmlrpc:call(Socket, "/RPC2", {call, request, [{base64, EncCommand}]}, false, 300000) of
+			{ok,{response,[EncResponse]}} ->
+				Response = base64:decode_to_string(EncResponse),
+				{ok, Result, _} = erlsom:scan(Response, Model),
+				gen_server:cast(modum_proxy, {traffic_update_response, Result});
+			Error -> 
+				io:format("Error receiving response ~p~n", [Error]),
+				gen_server:cast(modum_proxy, {traffic_update_response, ?undefined})
+		end;
+		({sync,Model},#comState{ip=Ip,port=Port}) when is_record(Model,model) ->
 		{ok, Request, _} = erlsom:scan_file(filename:join([ProjectDir, ComDir, "modum_updateRequest.xml"]), Model),
 		{ok, Command} = erlsom:write(Request, Model),
 		EncCommand = base64:encode_to_string(Command),
-		% {ok,{hostent,Host,_,_,_,_}} = inet:gethostbyaddr(Ip),
 		{ok, Socket} = gen_tcp:connect(Ip,Port,[{active, false}]),
+		io:format("command: ~p~n", [Command]),
 		case xmlrpc:call(Socket, "/", {call, request, [{base64, EncCommand}]}) of
 			{ok,{response,[EncResponse]}} ->
 				Response = base64:decode_to_string(EncResponse),
 				{ok, Result, _} = erlsom:scan(Response, Model),
 				Result;
 			Error -> 
-				io:format("Error receiving response ~w~n", [Error]),
+				io:format("Error receiving response ~p~n", [Error]),
 				?undefined
 		end;
 		(Payload,_) ->
