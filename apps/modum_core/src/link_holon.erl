@@ -51,9 +51,10 @@
 % the sample period, in [ms], for updating the cumulative flows in the blackboards.
 -define(blackboardUpdateDelay,50000).
 % the evaporation time, in [ms], of pheromones created by ants on the blackboards.
--define(evaporationTime,60000000).
+-define(evaporationTime,60000).
 
 -define(deleteOldHistoryDelay, 30000).
+-define(sumCumulativesDelay, 5000).
 -define(historyWindow, {0,120,0}).
 
 % start function of the gen_server, the link state representing this link holon has to be provided.
@@ -80,6 +81,7 @@ init([LinkState]) ->
  	timer:send_interval(?blackboardUpdateDelay, updateBlackboard),
     timer:send_interval(?linkConstraintDelay, propagateFlowDown),
 	timer:send_interval(?deleteOldHistoryDelay, deleteOldHistory),
+	% timer:send_interval(?sumCumulativesDelay, sumCumulatives),
 	%-record(linkBeing, {state=#linkState{},blackboard,models=#models{}}).
 	BB_b = bb_trafficflow:create("BB_b_"++atom_to_list(LinkState#linkState.id)),
 	BB_e = bb_trafficflow:create("BB_e_"++atom_to_list(LinkState#linkState.id)),
@@ -98,7 +100,7 @@ init([LinkState]) ->
 -record(history_item,{time,cf_begin,cf_end}).
 
 get_history(png, LinkId, {Width, Height}) ->
-	GetItem = fun(#history_item{time=TimeStamp, cf_begin=CF_B, cf_end=CF_E},ACC)->
+	GetItem = fun(#history_item{time=_TimeStamp, cf_begin=CF_B, cf_end=CF_E},ACC)->
 				[cumulative_func:to_png([{cf_b,CF_B},{cf_e,CF_E}], Width, Height) | ACC]
 				end,
 	Tab = list_to_atom("history_"++atom_to_list(LinkId)),
@@ -107,7 +109,7 @@ get_history(png, LinkId, {Width, Height}) ->
 		_ -> PNGS
 	end;
 get_history(points, LinkId, _Options) ->
-	GetItem = fun(#history_item{time=TimeStamp, cf_begin=CF_B, cf_end=CF_E},ACC)->
+	GetItem = fun(#history_item{time=_TimeStamp, cf_begin=CF_B, cf_end=CF_E},ACC)->
 				[cumulative_func:cfs_to_points([{cf_b,CF_B},{cf_e,CF_E}], []) | ACC]
 				end,
 	Tab = list_to_atom("history_"++atom_to_list(LinkId)),
@@ -136,7 +138,7 @@ print_history(text,LinkId,Dir)->
 	Tab = list_to_atom("history_"++atom_to_list(LinkId)),
 	ets:foldr(PrintItem, 0, Tab).
 
-init_ets_history(LinkId,LinkPID)->
+init_ets_history(LinkId,_LinkPID)->
 	TableName = list_to_atom("history_"++LinkId),
 	ets:new(TableName, [public,named_table,ordered_set,{keypos,2}]).
 
@@ -185,9 +187,27 @@ handle_info(updateMap, LB=#linkBeing{state=L}) ->
 handle_info(deleteOldHistory, LB=#linkBeing{state=#linkState{id=Id}}) ->
 	Now = util:timestamp(erlang:now()),
 	Window = util:timestamp(?historyWindow),
-	Nbr = ets:select_delete(list_to_atom("history_"++atom_to_list(Id)), ets:fun2ms(fun(#history_item{time=Time}) when Time < Now-Window -> true end)),
+	_Nbr = ets:select_delete(list_to_atom("history_"++atom_to_list(Id)), ets:fun2ms(fun(#history_item{time=Time}) when Time < Now-Window -> true end)),
 	% io:format("Removed ~w items",[Nbr]);
 	{noreply, LB};
+
+handle_info(sumCumulatives, LB=#linkBeing{state=#linkState{id=Id}, blackboard=BB}) ->
+	BB_Flow = BB#blackboard.bb_flow,
+	CF_Flow = BB#blackboard.cf_flow,
+	CFs = get_flow_cfs(BB_Flow),
+	CFs == [] orelse io:format("Summing CFs for link ~w: ~p~n", [Id, [cumulative_func:cf_to_points(C) || C <- CFs]]),
+	% sum all cumulatives with current CF_Flow?
+	NewCF_Flow = case CF_Flow of
+		?undefined -> cumulative_func:sum(CFs);
+		[] -> cumulative_func:sum(CFs);
+		_ -> cumulative_func:sum([CF_Flow | CFs])
+	end,
+	NewCF_Flow == [] orelse io:format("New CF_Flow for link ~w: ~w~n", [Id, cumulative_func:cf_to_points(NewCF_Flow)]),
+	% clear blackboard?
+	BB_Flow ! reset,
+	NewBB = BB#blackboard{cf_flow=NewCF_Flow},
+	NewLB = LB#linkBeing{blackboard=NewBB},
+	{noreply, NewLB};
 	
 % callback to handle updateBlackboard message. This is periodically called to update the cumulative flows, maintained by the blackboards.
 handle_info(updateBlackboard, #linkBeing{blackboard=BB} = LB)->
@@ -216,7 +236,7 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 				{CF_B, CF_E} when ((CF_B == ?undefined) or (CF_E == ?undefined)) -> void;
 							 % io:format("CF_B undefined. not propagating flow down~n"),
 							 % {noreply, LB};
-				{CF_B, CF_E}->MaxGrad = fundamental_diagram:c(FD),
+				{CF_B, _CF_E}->MaxGrad = fundamental_diagram:c(FD),
 		%%					  CF_B1 =  link_model:accommodate_max_capacity( CF_B, MaxGrad),
 							  CF_E1 = link_model:propagate_flow(down,CF_B, LB),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=CF_E}),
@@ -295,7 +315,7 @@ handle_info({get_info, Pid},  LB=#linkBeing{state=#linkState{id=Id}}) ->
 handle_info({get_density, 0, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD},state=#linkState{id=Id, density=Density, coordinates=Coordinates}}) ->
 	Pid ! {density, Id, {Coordinates,density_to_level_of_service(Density, fundamental_diagram:kjam(FD))}},
 	{noreply, LB};
-handle_info({get_density, Time, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD}, blackboard=#blackboard{cf_b = CF_B, cf_e = CF_E}, state=#linkState{length=L, id=Id, density=Density, coordinates=Coordinates}}) when L /= 0 ->
+handle_info({get_density, Time, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD}, blackboard=#blackboard{cf_b = CF_B, cf_e = CF_E}, state=#linkState{length=L, id=Id, density=_Density, coordinates=Coordinates}}) when L /= 0 ->
 	N = cumulative_flow:nbr_vehicles(util:timestamp(erlang:now())+Time,CF_B,CF_E),
 	D = density_to_level_of_service(N/L,fundamental_diagram:kjam(FD)),
 	Pid ! {density, Id, {Coordinates,D}},
@@ -332,7 +352,7 @@ execution({execute, #scenario{timeSlot={Time,_}}, SenderId}, LB=#linkBeing{state
 		ET when ((is_number(ET)) and (ET > Time)) -> SenderId ! {?reply,execute, ET};
 		T -> io:format("end time is not calculated correctly ~w~n",[T])
 	end;
-execution({proclaim, #scenario{timeSlot={Time,_},antState=#antState{creatorId=VehicleId}},SenderId}, LB=#linkBeing{state=#linkState{id=Id},blackboard=B,models=M}) ->
+execution({proclaim, #scenario{timeSlot={Time,_},antState=#antState{creatorId=VehicleId}},SenderId}, LB=#linkBeing{state=#linkState{id=_Id},blackboard=B,models=M}) ->
 	% add arrival time to blackboard
  	pheromone:create([B#blackboard.bb_b], ?evaporationTime,#vehicle_info{vehicle=VehicleId, arrival_time=Time,data=void}),
 	% apply travel time model  
@@ -350,18 +370,27 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, LB=#linkBe
 			SenderId ! {?reply,explore_upstream, ET};
 		T -> io:format("start time is not calculated correctly ~w~n",[T])
 	end;
-execution({proclaim_flow, #scenario{antState=#antState{creatorId=Id, data=CF}}, SenderId}, LB=#linkBeing{blackboard=#blackboard{bb_flow=BB},state=#linkState{connection = Connection}}) ->
+execution({proclaim_flow, #scenario{antState=#antState{creatorId=Id, data=CF}}, SenderId}, LB=#linkBeing{blackboard=#blackboard{bb_flow=BB},state=#linkState{id=LinkId, connection = Connection}}) ->
 	% check if blackboard already has already an entry from the same creatorId
-	P = get_flow_pheromone(BB, Id),
-	% if pheromone is found, evaporate it
-	is_pid(P) andalso pheromone:evaporate(P,void,[BB]),
+	% P = get_flow_pheromone(BB, Id),
+	% if pheromone is found, evaporate it -- don't replace it
+	% is_pid(P) andalso (P ! evaporate),
 	% add new {linkId, cumulative function} tuple to blackboard
+	% io:format("Adding pheromone ~p for link ~w~n", [cumulative_func:cfs_to_points([{Id,CF}],[]), LinkId]),
 	pheromone:create([BB], ?evaporationTime, #info{data={Id, CF}, tags=[flow]}),
 	% propagate flow down 
 	NewCF = link_model:propagate_flow(down,CF, LB),
+	io:format("New CF in link ~w: ~w~n", [LinkId,{Connection#connection.to, cumulative_func:cfs_to_points([{LinkId, NewCF}],[])}]),
 	% send new cumulative function back to current flow ant
 	SenderId ! {?reply, proclaim_flow, [{Connection#connection.to, NewCF}]}.
 
+get_flow_cfs(Blackboard) ->
+	Blackboard ! {get,{'_',{'_', '$1'},'_'},self()},
+	receive
+		{result_get,[]}->[];
+		{result_get,CFs} -> lists:flatten(CFs)
+		after 2000-> io:format("Waiting too long for response..."), ?undefined
+	end.
 get_flow_pheromone(Blackboard, Id) ->
 	Blackboard ! {get,{'$1',{Id, '_'},'_'},self()},
 	receive

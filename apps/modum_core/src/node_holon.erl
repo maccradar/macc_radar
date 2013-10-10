@@ -188,6 +188,8 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, #nodeBeing
 		T -> io:format("start time is not calculated correctly ~w~n",[T])
 	end;
 execution({proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antState{data=CF}}, SenderId}, NB = #nodeBeing{state=#nodeState{connections = Connections, turningFractions=TurningFractionDict}}) ->
-	TFs = [{To, dict:fetch({From, To},TurningFractionDict)} || #connection{from = From, to = To} <- Connections ,From == Previous],
-	
-	SenderId ! {?reply, proclaim_flow, TFs}.
+	% get turning fractions and multiply them with the given cumulative to obtain new cumulatives to pass to the links
+	CFs = [{To, cumulative_func:multiply(y, dict:fetch({From, To},TurningFractionDict), CF)} || #connection{from = From, to = To} <- Connections ,From == Previous],
+	% filter out cumulatives with a largest y value (# vehicles) smaller than or equal to 1
+	NewCFs = lists:filter(fun(X = {_, NewCF}) -> {Y, _} =  cumulative_func:last(y, NewCF), Y > 1 end, CFs),
+	SenderId ! {?reply, proclaim_flow, NewCFs}.

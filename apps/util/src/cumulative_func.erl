@@ -36,7 +36,7 @@
 -module(cumulative_func).
 
 -include("consts.hrl").
--export([update_last_point/4,multiply/3, multiply/4, add_point/3,add_points/2,y_x/2,x_y/2,update_point/4,new/2,test/0,next/3,prev/3,first/2,next_segment/3,next_value/3,first_segment/1,prev_segment/3,prev_value/3,cf_to_points/1,to_file/3,segment_at/2,last/2,last_segment/1,size/1,remove_point/2,nextPoint/3,prevPoint/3,shift_from/4,add_segments/2,find_next_gradient_intersection/3,delete_after/3,to_png/3, cfs_to_points/2]).
+-export([first_value/2, last_value/2, sum_test/0, sum/1, sum/2,update_last_point/4,multiply/3, multiply/4, add_point/3,add_points/2,y_x/2,x_y/2,update_point/4,new/2,next/3,prev/3,first/2,next_segment/3,next_value/3,first_segment/1,prev_segment/3,prev_value/3,cf_to_points/1,to_file/3,segment_at/2,last/2,last_segment/1,size/1,remove_point/2,nextPoint/3,prevPoint/3,shift_from/4,add_segments/2,find_next_gradient_intersection/3,delete_after/3,to_png/3, cfs_to_points/2]).
 -export_type([func/0]).
 %% representation of a cumulative function (strict ascending monotone function)
 %%     - binary tree mapping x values to segments
@@ -111,7 +111,6 @@ update_last_point(y,LastX,Y_upd,Func=#func{x_y=X_Y,y_x=Y_X})->
 	S_a_upd = line_segment:update(y2, Y_upd, S_a),
 	X_Y_u1 = gb_trees:update(X, S_a_upd, X_Y),
 	Y = line_segment:x_y(X, S_a),
-	io:format("Y_X: ~w ~w~n", [Y, Y_X]),
 	Y_X_u1 = gb_trees:delete(Y,Y_X),
 	Y_X_u2 = gb_trees:enter(Y_upd, S_a_upd, Y_X_u1),
 	#func{x_y = X_Y_u1,y_x = Y_X_u2}.
@@ -122,6 +121,7 @@ shift_point(y,X,Y,Val,CF)->
 shift_from(_,{?undefined,?undefined},_,CF)->
 	CF;
 shift_from(Type,{CurX,CurY},Value,CF)->
+	io:format("{~w,~w} ~w~n",[CurX,CurY,Value]),
 	shift_from(y,nextXYPoint({CurX,CurY},CF), Value, shift_point(Type, CurX, CurY,Value,CF)).
 	
 
@@ -145,7 +145,6 @@ last(y,#func{y_x = Y_X})->
 last_segment(#func{x_y = X_Y})->
 	{_ ,S} = gb_trees:largest(X_Y),
 	S.
-
 %% returns the smallest X value with corresponding segment {smallest_x,first_segment}
 %% assumes a non empty cumul func
 -spec first(Type,Func) -> {Key, Val} when
@@ -197,7 +196,6 @@ next_value(Type,Cur,CF)->
 		nil -> nil;
 		{V,_}->V
 	end.
-	
 
 %% returns the prev discrete value of the cummulative (either X or Y values depending on given atom as first argument)
 %%      -axis_value
@@ -207,6 +205,13 @@ prev_value(Type,Cur,CF)->
 		{V,_}->V
 	end.
 
+first_value(Type, CF) ->
+	{V, _} = first(Type, CF),
+	V.
+last_value(Type, CF) ->
+	{V,_} = last(Type,CF),
+	V.
+	
 %% creates a new cummulative function
 %% X and Y are the coordinates of the starting point 
 new(X,Y)->
@@ -378,14 +383,99 @@ cfs_to_points([{Name,#func{x_y=X_Y}}|Tail],Acc)->
 	Points = cf_to_points(gb_trees:to_list(X_Y)),
 	cfs_to_points(Tail, [{Name,Points}|Acc]).
 											 
+cf_to_points(#func{x_y=X_Y}) ->
+	cf_to_points(gb_trees:to_list(X_Y));
 cf_to_points([{X,S}|Tail])->
 	cf_to_points([{X,line_segment:get(y1, S)}],[{X,S}|Tail]).
 cf_to_points(CF_Points,[])->
 	lists:reverse(CF_Points);
 cf_to_points(CF_Points,[{_,S}|Tail])->
 	cf_to_points([{line_segment:get(x2, S),line_segment:get(y2, S)}|CF_Points],Tail).
+
+sum([]) ->
+	[];
+sum([CF|CFs]) ->
+	lists:foldl(fun(CF=#func{},Acc=#func{}) -> sum(CF, Acc) end, CF, CFs).
+
+%% sum two cumulatives     
+sum(CF1,CF2)-> 
+    {FX1,_} = first(x,CF1), 
+    {FX2,_} = first(x,CF2), 
+    FX = min(FX1,FX2), 
+    FY = x_y(FX,CF1) + x_y(FX,CF2),
+    sum(CF1,element(1,next(x,FX,CF1)),CF2,element(1,next(x,FX,CF2)),new(FX,FY),{FX,FY}). 
+
+%% sum two cumulatives (help function)
+%% CF1 : cumulative function1
+%% NextPoint1: next discrete point to consider for CF1: {X,Y}
+%% CF2 : cumulative function2
+%% NextPoint2: next discrete point to consider for CF2 {X,Y}
+%% {LPX,LPY} : last point of TotalCF 
+% sum(CF1,NextX,CF2,void,TotalCF,{LPX,LPY})-> 
+%    Diff = x_y(NextX,CF1) - x_y(LPX,CF1), 
+%    NextY = LPY + Diff, 
+%    sum(CF1,next_value(x,NextX,CF1),CF2,void,add_point(NextX,NextY,TotalCF),{NextX,NextY});
+% sum(CF1,void,CF2,NextX,TotalCF,{LPX,LPY})-> 
+%    sum(CF2,NextX,CF1,void,TotalCF,{LPX,LPY});
+sum(_,nil,_,nil, TotalCF, _) ->
+	TotalCF;
+sum(CF1,NextX,CF2,nil,TotalCF,{LPX,LPY})-> 
+	Diff = x_y(NextX,CF1) - x_y(LPX,CF1), 
+	NextY = LPY + Diff, 
+	NewX1 = next_value(x,NextX,CF1),
+	L1 = last_value(x,CF1),
+	X1 = case NewX1 of
+		nil when LPX < L1 -> L1;
+		nil when LPX >= L1 -> nil;
+		_ -> NewX1
+	end,
+    sum(CF1,X1,CF2,nil,add_point(NextX,NextY,TotalCF),{NextX,NextY});
+sum(CF1,nil,CF2,NextX,TotalCF,{LPX,LPY})-> 
+   sum(CF2,NextX,CF1,nil,TotalCF,{LPX,LPY});
+sum(CF1,NextX1,CF2,NextX2,TotalCF,{LPX,LPY})-> 
+	NextX  = min(NextX1,NextX2), %% min according to X axes 
+    Diff1 = x_y(NextX,CF1) - x_y(LPX,CF1), 
+    Diff2 = x_y(NextX,CF2) - x_y(LPX,CF2), 
+    Diff = Diff1 + Diff2, 
+    NextY = LPY + Diff,
+	NewX1 = next_value(x,NextX,CF1),
+	NewX2 = next_value(x,NextX,CF2),
+	L1 = last_value(x,CF1),
+	L2 = last_value(x,CF2),
+	X1 = case NewX1 of
+		nil when LPX < L1 -> L1;
+		nil when LPX >= L1 -> nil;
+		_ -> NewX1
+	end,
+	X2 = case NewX2 of
+		nil when LPX < L2 -> L2;
+		nil when LPX >= L2 -> nil;
+		_ -> NewX2
+	end,
+    sum(CF1,X1,CF2,X2,add_point(NextX,NextY,TotalCF),{NextX,NextY}). 
+ 
+sum_test()-> 
+    C_F11 = new(2,0), 
+    C_F12 = add_point(5,3, C_F11), 
+    C_F13 = add_point(11, 6, C_F12), 
+    C_F14 = add_point(19, 7, C_F13),
+	C_F15 = add_point(25, 10, C_F14),
+	io:format("~w~n",[last_value(x,C_F15)]),
 	
+	C_F21 = new(0,0), 
+    C_F22 = add_point(5,4, C_F21), 
+    C_F23 = add_point(11, 5, C_F22), 
+    C_F24 = add_point(17, 10, C_F23),
 	
+	C_F31 = new(5,10), 
+    C_F32 = add_point(6,14, C_F31), 
+    C_F33 = add_point(11, 25, C_F32), 
+    C_F34 = add_point(27, 30, C_F33),
+	
+    CF = sum([C_F15,C_F24,C_F34]),
+	io:format("~p~n",[cf_to_points(CF)]).
+	
+
 multiply(y, Factor, Func=#func{}) ->
 	{First,_} = first(x, Func),
 	multiply(y, First, Factor, Func).
@@ -395,15 +485,13 @@ multiply(y, nil, Factor, Func) ->
 	NewY = round(Y * Factor),
 	update_point(y, X, NewY, Func);
 multiply(y, X, Factor, Func=#func{}) ->
-	io:format("multiply y: ~w, ~w, ~p~n",[X,Factor, cf_to_points(gb_trees:to_list(Func#func.x_y))]),
 	Y = x_y(X, Func),
 	NewY = round(Y * Factor),
 	NewCF = update_point(y, X, NewY, Func),
-	io:format("new CF: ~p~n", [cf_to_points(gb_trees:to_list(NewCF#func.x_y))]),
 	NextX = next_value(x,X,NewCF),
 	multiply(y, NextX , Factor, NewCF).
 
-test()->
+multiply_test()->
 	C_F11 = new(0,0),
 	C_F12 = add_point(5,3, C_F11),
  	C_F13 = add_point(11, 6, C_F12),
@@ -414,11 +502,20 @@ test()->
  	C_F23 = add_point(11, 5, C_F22),
    	C_F24 = add_point(17, 10, C_F23),
 	
-	P1 = cf_to_points(gb_trees:to_list(C_F14#func.x_y)),
+	C_F31 = new(5,0),
+	C_F32 = add_point(20,4, C_F31),
+ 	C_F33 = add_point(25, 5, C_F32),
+   	C_F34 = add_point(30, 10, C_F33),
+	
+	
+	P1 = cf_to_points(C_F14),
 	io:format("Before: ~p~n", [P1]),
 	io:format("Last: ~w~n", [gb_trees:lookup(17, C_F14#func.x_y)]),
-	NewCF = multiply(y, 0.5, C_F14),
-	P2 = cf_to_points(gb_trees:to_list(NewCF#func.x_y)),
-	io:format("After: ~p~n", [P2]).
+	NewCF = multiply(y, 0.5, C_F14).
+
+	% Sum = sum([C_F14,C_F24, C_F34]),
+	% io:format("Sum: ~p~n", [cf_to_points(Sum)]),
+	% P2 = cf_to_points(NewCF),
+	% io:format("After: ~p~n", [P2]).
 	
 
