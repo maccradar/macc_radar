@@ -33,6 +33,12 @@
 %% Description: TODO: Add description to util
 -module(util).
 
--export([timestamp/1]).
+-export([timestamp/1, timestamp/2]).
 timestamp({Mega, Secs, Micro}) ->
     Mega*1000*1000*1000*1000 + Secs * 1000 * 1000 + Micro.
+	
+timestamp(sec, {Mega, Secs, Micro}) ->
+	timestamp({Mega, Secs, Micro}) / 1000 * 1000;
+	
+timestamp(tuple, Seconds) ->
+	{Seconds div 1000000, Seconds rem 1000000, 0}.

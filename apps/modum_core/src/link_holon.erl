@@ -81,7 +81,7 @@ init([LinkState]) ->
  	timer:send_interval(?blackboardUpdateDelay, updateBlackboard),
     timer:send_interval(?linkConstraintDelay, propagateFlowDown),
 	timer:send_interval(?deleteOldHistoryDelay, deleteOldHistory),
-	% timer:send_interval(?sumCumulativesDelay, sumCumulatives),
+	timer:send_interval(?sumCumulativesDelay, sumCumulatives),
 	%-record(linkBeing, {state=#linkState{},blackboard,models=#models{}}).
 	BB_b = bb_trafficflow:create("BB_b_"++atom_to_list(LinkState#linkState.id)),
 	BB_e = bb_trafficflow:create("BB_e_"++atom_to_list(LinkState#linkState.id)),
@@ -182,6 +182,11 @@ handle_info(updateMap, LB=#linkBeing{state=L}) ->
 	ToNode = (L#linkState.connection)#connection.to,
 	ToNode ! {capacityUpdate, L#linkState.id, fundamental_diagram:c((LB#linkBeing.models)#models.fd)},
 	NewLB = LB#linkBeing{state=LinkState},
+	% send current flow ant
+	TimeToPass = L#linkState.avgSpeed / L#linkState.length,
+	Now = util:timestamp(sec,erlang:now()),
+	CumulativeFunction = void, % cumulative_func:add_point(,,cumulative_func:new(erlang:now(),0)),
+	traffic_ant:create_current_flow_ant(#location{resource=L#linkState.id}, ToNode, L#linkState.id, CumulativeFunction),
     {noreply, NewLB};
 
 handle_info(deleteOldHistory, LB=#linkBeing{state=#linkState{id=Id}}) ->
@@ -238,7 +243,8 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 							 % {noreply, LB};
 				{CF_B, _CF_E}->MaxGrad = fundamental_diagram:c(FD),
 		%%					  CF_B1 =  link_model:accommodate_max_capacity( CF_B, MaxGrad),
-							  CF_E1 = link_model:propagate_flow(down,CF_B, LB),
+							  SumCF = cumulative_func:sum(CF_B, BB#blackboard.cf_flow),
+							  CF_E1 = link_model:propagate_flow(down,SumCF, LB),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=CF_E}),
 		%%					  NewLB1 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B1,cf_e=CF_E1}},  
 		%%					  UPContraint = link_model:propagate_flow(up,CF_E1, NewLB1),

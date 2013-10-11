@@ -100,6 +100,8 @@ init([ProxyState]) ->
     process_flag(trap_exit, true),
 	%{ok, NodeDict, LinkDict} = parseMap(Map),
 	%{ok, Graph} = createGraph(Map),
+	% start by requesting a traffic update 30 seconds after boot
+	timer:send_after(30000, traffic_update),
 	timer:send_interval(?DELAY, traffic_update),
 	{ok, ProxyState#proxyState{nodeInfoDict=dict:new(), linkInfoDict=dict:new(), cache=dict:new()}}.
 	

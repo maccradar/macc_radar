@@ -143,6 +143,24 @@ var refresh_source = null;
 var lastResponse = null;
 
 /* function definitions */
+function stringToTime(hoursMinutes) {
+	if(hoursMinutes == "")
+		hoursMinutes = "00:00";
+	var hs = hoursMinutes.split(":");
+	var d = new Date();
+	d.setHours(parseInt(hs[0]));
+	d.setMinutes(parseInt(hs[1]));
+	return Math.round(d.getTime() / 1000);
+}
+
+function timeToString(timeInSec) {
+	var d = new Date(timeInSec*1000);
+	var h = d.getHours();
+	var m = d.getMinutes();
+	h = h < 10 ? "0"+h : h;
+	m = m < 10 ? "0"+m : m;
+	return h+":"+m;
+}
 
 function runSimulation() {
 	var runButton = document.getElementById("run");
@@ -161,9 +179,9 @@ function runSimulation() {
 	for(i=0;i< sim.rows.length-1; i++) {
 		Vehicles[i] = parseInt(document.getElementsByName("nbrVehicles")[i].value);
 		Type[i] = document.getElementsByName("type")[i].value;
-		Start[i] = parseInt(document.getElementsByName("start")[i].value);
-		End[i] = parseInt(document.getElementsByName("end")[i].value);
-		Arrival[i] = parseInt(document.getElementsByName("arrival")[i].value);
+		Start[i] = stringToTime(document.getElementsByName("start")[i].value);
+		End[i] = stringToTime(document.getElementsByName("end")[i].value);
+		Arrival[i] = stringToTime(document.getElementsByName("arrival")[i].value);
 	}
 	var O = document.getElementById("origin").value.split(" : "); 
 	var D = document.getElementById("destination").value.split(" : "); 
@@ -285,29 +303,29 @@ function addSimRow(previousRow) {
 		typeSelect.appendChild(el);
 	}
 	vehicleTypeData.appendChild(typeSelect);
-	
+	var now = new Date();
 	var start = document.createElement("input");
 	start.name = "start";
-	start.type = "number";
-	start.min = "0";
-	start.max = "10000";
-	start.value = previousEnd;
+	start.type = "time";
+	start.min = "00:00:00";
+	start.max = "23:59:00";
+	start.value = timeToString(new Date().getTime()/1000);
 	startData.appendChild(start);
 	
 	var end = document.createElement("input");
 	end.name = "end";
-	end.type = "number";
-	end.min = "0";
-	end.max = "10000";
-	end.value = (parseInt(previousEnd)+10).toString();
+	end.type = "time";
+	end.min = "00:00:00";
+	end.max = "23:59:00";
+	end.value =  timeToString(new Date().getTime()/1000);
 	endData.appendChild(end);
 	
 	var arrival = document.createElement("input");
 	arrival.name = "arrival";
-	arrival.type = "number";
-	arrival.min = "0";
-	arrival.max = "100000";
-	arrival.value = "100";
+	arrival.type = "time";
+	arrival.min = "00:00:00";
+	arrival.max = "23:59:00";
+	arrival.value = timeToString(new Date().getTime()/1000);
 	arrivalData.appendChild(arrival);
 }
 

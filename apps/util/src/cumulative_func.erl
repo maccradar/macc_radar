@@ -395,16 +395,21 @@ cf_to_points(CF_Points,[{_,S}|Tail])->
 sum([]) ->
 	[];
 sum([CF|CFs]) ->
-	lists:foldl(fun(CF=#func{},Acc=#func{}) -> sum(CF, Acc) end, CF, CFs).
+	lists:foldl(fun(CF,Acc) -> sum(CF, Acc) end, CF, CFs).
 
 %% sum two cumulatives     
-sum(CF1,CF2)-> 
+sum(CF1=#func{},CF2=#func{})-> 
     {FX1,_} = first(x,CF1), 
     {FX2,_} = first(x,CF2), 
     FX = min(FX1,FX2), 
     FY = x_y(FX,CF1) + x_y(FX,CF2),
-    sum(CF1,element(1,next(x,FX,CF1)),CF2,element(1,next(x,FX,CF2)),new(FX,FY),{FX,FY}). 
-
+    sum(CF1,element(1,next(x,FX,CF1)),CF2,element(1,next(x,FX,CF2)),new(FX,FY),{FX,FY});
+sum(_,CF2=#func{})-> 
+	CF2;
+sum(CF1=#func{},_)->
+	CF1;
+sum(_,_)-> 
+	?undefined.
 %% sum two cumulatives (help function)
 %% CF1 : cumulative function1
 %% NextPoint1: next discrete point to consider for CF1: {X,Y}

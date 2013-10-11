@@ -1,4 +1,5 @@
 <erl>
+-include_lib("modum_core/include/states.hrl").
 -compile(export_all).
 
 out(A) ->
@@ -76,12 +77,14 @@ callback([{ip, IP}] = _State, {call, kill_simulation, _Value} = _Request, Sessio
 	{true, 0, Session, {response,  "Simulation ended." }}.
 	
 simulate_traffic([V | Vs], [T | Ts], [S | Ss], [E | Es], [_A | As], O, D, K, no_upstream) ->
-	io:format("Simulating ~w vehicles of type ~w and departing from ~w to ~w between ~w and ~w.~n", [V, T, O, D, S, E]),
-	core_test:create_vehicles(V,{departure_time, {S,E}}, {O,D,K}, T),
+	{_,SDate} = calendar:now_to_local_time(util:timestamp(tuple,S)),
+	{_,EDate} = calendar:now_to_local_time(util:timestamp(tuple,E)),
+	io:format("Simulating ~w vehicles of type ~w and departing from ~w to ~w between ~w and ~w.~n", [V, T, O, D, SDate, EDate]),
+	create_vehicles(V,{departure_time, {S,E}}, {O,D,K}, T),
 	simulate_traffic(Vs,Ts,Ss,Es,As,O,D,K, no_upstream);
 simulate_traffic([V | Vs], [T | Ts], [_S | Ss], [_E | Es], [A | As], O, D, K, upstream) ->
 	io:format("Simulating ~w vehicles of type ~w and departing from ~w to ~w with upstream search arrival time ~w.~n", [V, T, O, D, A]),
-	core_test:create_vehicles(V, {arrival_time, A}, {O,D,K}, T),
+	create_vehicles(V, {arrival_time, A}, {O,D,K}, T),
 	simulate_traffic(Vs,Ts,Ss,Es,As,O,D,K, upstream);	
 simulate_traffic([],[],[],[],[], _O,_D,_K,_) ->
 	io:format("Finished initialization of vehicles.~n",[]).
@@ -118,4 +121,15 @@ paths_to_names([P | Paths]) ->
 	[Route | paths_to_names(Paths)];
 paths_to_names([]) ->
 	[].
+create_vehicles(0,{_,_},_, _Mode)->
+	ok;
+create_vehicles(NrVehicles,Time = {departure_time, {From,To}}, {O,D,K}, Mode) ->
+	DepartureTime = From+random:uniform(To-From),
+	VehicleState = #vehicleState{departureTime=DepartureTime,origin=#location{resource=O,position=?link_in},destination=#location{resource=D,position=?link_out},location=#location{resource=O,position=?link_in},id=list_to_atom("vehicle"++ integer_to_list(From)++integer_to_list(NrVehicles)), length=5,maxSpeed=100},
+	modum_main:create_vehicle({VehicleState,Mode,K}),
+	create_vehicles(NrVehicles-1,Time,{O,D,K}, Mode);
+create_vehicles(NrVehicles, Time = {arrival_time, ArrivalTime}, {O, D,K}, Mode) ->
+	VehicleState = #vehicleState{arrivalTime = ArrivalTime, departureTime=?undefined,origin=#location{resource=O,position=?link_in},destination=#location{resource=D,position=?link_out},location=#location{resource=O,position=?link_in},id=list_to_atom("vehicle"++ integer_to_list(NrVehicles)), length=5,maxSpeed=100},
+	modum_main:create_vehicle({VehicleState,Mode,K}),
+	create_vehicles(NrVehicles-1, Time,{O,D,K}, Mode).
 </erl>
