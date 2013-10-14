@@ -31,7 +31,7 @@
 -module(modum_proxy).
 -behaviour(gen_server).
 
--export([start_link/1, stop/0, create_graph/1, vertex/1, get_graph/0, get_k_shortest_path/3, get_status_info/0, get_server/1, get_client/1, get_links_of_type/1, get_closest_node/1]).
+-export([start_link/1, stop/0, create_graph/1, vertex/1, get_forecast/1, get_graph/0, get_k_shortest_path/3, get_status_info/0, get_server/1, get_client/1, get_links_of_type/1, get_closest_node/1]).
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, code_change/3, terminate/2, get_id/0]).
 
@@ -52,6 +52,9 @@ vertex(V) ->
 		{?reply, vertex, V1} -> V1
 	end.
 
+get_forecast(TimeWindow) ->
+	gen_server:call(?ID, {forecast, TimeWindow}, ?callTimeout).
+	
 get_closest_node({Lat,Lon}) ->
 	{?reply, closest_node, NodeId} = gen_server:call(?ID, {closest_node, {Lat,Lon}}, ?callTimeout),
 	NodeId.
@@ -100,8 +103,8 @@ init([ProxyState]) ->
     process_flag(trap_exit, true),
 	%{ok, NodeDict, LinkDict} = parseMap(Map),
 	%{ok, Graph} = createGraph(Map),
-	% start by requesting a traffic update 30 seconds after boot
-	timer:send_after(30000, traffic_update),
+	% start by requesting a traffic update 10 seconds after boot
+	timer:send_after(10000, traffic_update),
 	timer:send_interval(?DELAY, traffic_update),
 	{ok, ProxyState#proxyState{nodeInfoDict=dict:new(), linkInfoDict=dict:new(), cache=dict:new()}}.
 	
@@ -127,7 +130,7 @@ handle_call({linkUpdate, LinkState=#linkState{id=LinkId}}, _From, S=#proxyState{
 	%io:format("Link ~w requests update through call.~n", [LinkId]),
 	case dict:find(LinkId, LinkDict) of
 		{ok, #linkInformationType{avgSpeed=AvgSpeed,co2emissions=CO2,density=Density}} ->
-			NewLinkState = LinkState#linkState{avgSpeed=AvgSpeed, co2emissions=CO2, density=Density},
+			NewLinkState = LinkState#linkState{avgSpeed=list_to_float(AvgSpeed), co2emissions=list_to_float(CO2), density=list_to_float(Density)},
 			%io:format("Recent info found, replying with new state~n"),
 			{reply, {?reply, linkUpdate, NewLinkState}, S};
 		error -> % no updates received, so reply with current state
@@ -167,6 +170,15 @@ handle_call({check_consistency, nodes}, _From, State = #proxyState{nodes=Nodes})
 	end,
 	Result = lists:all(CheckFun, Nodes),
 	{reply, {?reply, {check_consistency, nodes}, Result}, State};
+
+handle_call({forecast, TimeWindow}, _From, State = #proxyState{links=Links}) ->
+	TimeStep = 300,
+	Times = lists:seq(0, TimeWindow, TimeStep), % sample every 5 minutes
+	F = fun(LinkId) ->
+		{LinkId, gen_server:call(LinkId, {travel_time, Times}, ?callTimeout), TimeStep}
+	end,
+	Forecast = lists:map(F, Links),
+	{reply, Forecast, State};
 % default callback for synchronous calls.
 handle_call(_Message, _From, S) ->
     {noreply, S}.
@@ -287,6 +299,8 @@ updateLinkStates(Dict, []) ->
 updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=Density} | Rest]) ->
 	list_to_float(Density) == 0.0 orelse io:format("new density for link ~w: ~w~n",[list_to_atom(Id),list_to_float(Density)]),
 	NewDict = dict:store(list_to_atom(Id), LinkInfo, Dict),
+	% inform link immediately:
+	gen_server:cast(list_to_atom(Id), traffic_update),
 	updateLinkStates(NewDict,Rest);
 updateLinkStates(_, _) ->
 	{error, unknown_format}.
