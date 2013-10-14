@@ -77,15 +77,20 @@ traffic_update_client() ->
 		{ok, Request, _} = erlsom:scan_file(filename:join([ProjectDir, ComDir, "modum_updateRequest.xml"]), Model),
 		{ok, Command} = erlsom:write(Request, Model),
 		EncCommand = base64:encode_to_string("<?xml version=\"1.0\" encoding=\"utf-8\" ?>"++Command),
-		{ok, Socket} = gen_tcp:connect(Ip,Port,[{active, false}]),
-		io:format("Request: ~p~n", [Request]),
-		case xmlrpc:call(Socket, "/RPC2", {call, request, [{base64, EncCommand}]}, false, 300000) of
-			{ok,{response,[EncResponse]}} ->
-				Response = base64:decode_to_string(EncResponse),
-				{ok, Result, _} = erlsom:scan(Response, Model),
-				gen_server:cast(modum_proxy, {traffic_update_response, Result});
-			Error -> 
-				io:format("Error receiving response ~p~n", [Error]),
+		case gen_tcp:connect(Ip,Port,[{active, false}]) of
+			{ok, Socket} -> 
+				io:format("Request: ~p~n", [Request]),
+				case xmlrpc:call(Socket, "/RPC2", {call, request, [{base64, EncCommand}]}, false, 300000) of
+					{ok,{response,[EncResponse]}} ->
+						Response = base64:decode_to_string(EncResponse),
+						{ok, Result, _} = erlsom:scan(Response, Model),
+						gen_server:cast(modum_proxy, {traffic_update_response, Result});
+					Error -> 
+						io:format("Error receiving response ~p~n", [Error]),
+						gen_server:cast(modum_proxy, {traffic_update_response, ?undefined})
+			end;
+			{error, Error} ->
+				io:format("Could not open socket ~w:~w due to: ~w~n", [Ip,Port,Error]),
 				gen_server:cast(modum_proxy, {traffic_update_response, ?undefined})
 		end;
 		({sync,Model},#comState{ip=Ip,port=Port}) when is_record(Model,model) ->
@@ -139,7 +144,8 @@ forecast_server(Xsd) ->
 				case erlsom:scan(Request, Model) of
 					{ok, Xml, _} ->
 						TimeWindow = Xml#forecastRequest.timeWindow,
-						Forecast = getForecast(TimeWindow),
+						F = modum_proxy:get_forecast(TimeWindow),
+						Forecast = prepare_forecast_output(F),
 						C = #forecastResponse{link=Forecast},
 						case erlsom:write(C, Model) of
 							{ok, Command} ->
@@ -155,13 +161,8 @@ forecast_server(Xsd) ->
 		end
 	end.
 	
-getForecast(_TimeWindow) ->
-	[#linkForecastType{id="link0",interval=
-		[#forecastIntervalType{timeStart="0",timeStop="100",travelTime="10"},
-		 #forecastIntervalType{timeStart="0",timeStop="100",travelTime="10"}]},
-	 #linkForecastType{id="link1",interval=
-		[#forecastIntervalType{timeStart="0",timeStop="100",travelTime="20"},
-		 #forecastIntervalType{timeStart="0",timeStop="100",travelTime="20"}]}].
+prepare_forecast_output(Forecast) ->
+	[#linkForecastType{id=Id,interval=[#forecastIntervalType{timeStart=T, timeStop=T+TimeStep, travelTime=TravelTime} || {T,TravelTime} <- TravelTimes]} || {Id, TravelTimes, TimeStep} <- Forecast].
 
 optimal_path_server(Xsd) ->
 	fun(Request) ->

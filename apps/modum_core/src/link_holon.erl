@@ -166,29 +166,30 @@ handle_call(being, _From, LB=#linkBeing{}) ->
 handle_call({flow_pheromone, Id}, _From, LB=#linkBeing{blackboard=#blackboard{bb_flow=BB}}) ->
 	P = get_flow_pheromone(BB, Id),
 	{reply, {?reply, flow_pheromone, P}, LB};
+handle_call({travel_time, Times}, _From, LB=#linkBeing{state=#linkState{length=L, maxAllowedSpeed=S}, blackboard=#blackboard{cf_b=?undefined, cf_e=_CF_E}}) ->
+	TravelTimes = [{T, L / S} || T <- Times],
+	{reply, TravelTimes, LB};
+handle_call({travel_time, Times}, _From, LB=#linkBeing{state=#linkState{length=L, maxAllowedSpeed=S}, blackboard=#blackboard{cf_b=_CF_B, cf_e=?undefined}}) ->
+	TravelTimes = [{T, L / S} || T <- Times],
+	{reply, TravelTimes, LB};
+handle_call({travel_time, Times}, _From, LB=#linkBeing{blackboard=#blackboard{cf_b=CF_B, cf_e=CF_E}}) when is_list(Times) ->
+	TravelTimes = lists:map(fun(Time) -> {Time, cumulative_flow:end_time(util:timestamp(erlang:now())+Time,CF_B,CF_E)} end, Times),
+	{reply, TravelTimes, LB};
 % default callback for synchronous calls.
 handle_call(_Message, From, S) ->
 	io:format("handle call from ~w ~n ",[From]),
     {noreply, S}.
+handle_cast(traffic_update, LB) ->
+	NewLB = get_traffic_update(LB),
+    {noreply, NewLB};
 % default callback for asynchronous casts.
 handle_cast(_Message, S) ->
 	io:format("handle cast: state =  ~w ~n ",[S]),
     {noreply, S}.
 % callback to handle updateMap message. This is periodically called to request map updates through the MODUM client.
-handle_info(updateMap, LB=#linkBeing{state=L}) ->
-    %io:format("Link ~s wants an update!~n",[N]),  
-    {?reply, linkUpdate, LinkState} = gen_server:call(modum_proxy:get_id(),{linkUpdate, L}, ?callTimeout),
-	% inform downstream node of "new" capacity
-	ToNode = (L#linkState.connection)#connection.to,
-	ToNode ! {capacityUpdate, L#linkState.id, fundamental_diagram:c((LB#linkBeing.models)#models.fd)},
-	NewLB = LB#linkBeing{state=LinkState},
-	% send current flow ant
-	TimeToPass = L#linkState.avgSpeed / L#linkState.length,
-	Now = util:timestamp(sec,erlang:now()),
-	CumulativeFunction = void, % cumulative_func:add_point(,,cumulative_func:new(erlang:now(),0)),
-	traffic_ant:create_current_flow_ant(#location{resource=L#linkState.id}, ToNode, L#linkState.id, CumulativeFunction),
-    {noreply, NewLB};
-
+handle_info(updateMap, LB) ->
+    NewLB = get_traffic_update(LB),
+	{noreply, NewLB};
 handle_info(deleteOldHistory, LB=#linkBeing{state=#linkState{id=Id}}) ->
 	Now = util:timestamp(erlang:now()),
 	Window = util:timestamp(?historyWindow),
@@ -200,14 +201,14 @@ handle_info(sumCumulatives, LB=#linkBeing{state=#linkState{id=Id}, blackboard=BB
 	BB_Flow = BB#blackboard.bb_flow,
 	CF_Flow = BB#blackboard.cf_flow,
 	CFs = get_flow_cfs(BB_Flow),
-	CFs == [] orelse io:format("Summing CFs for link ~w: ~p~n", [Id, [cumulative_func:cf_to_points(C) || C <- CFs]]),
+	% CFs == [] orelse io:format("Summing CFs for link ~w: ~p~n", [Id, [cumulative_func:cf_to_points(C) || C <- CFs]]),
 	% sum all cumulatives with current CF_Flow?
 	NewCF_Flow = case CF_Flow of
 		?undefined -> cumulative_func:sum(CFs);
 		[] -> cumulative_func:sum(CFs);
 		_ -> cumulative_func:sum([CF_Flow | CFs])
 	end,
-	NewCF_Flow == [] orelse io:format("New CF_Flow for link ~w: ~w~n", [Id, cumulative_func:cf_to_points(NewCF_Flow)]),
+	% NewCF_Flow == [] orelse io:format("New CF_Flow for link ~w: ~w~n", [Id, cumulative_func:cf_to_points(NewCF_Flow)]),
 	% clear blackboard?
 	BB_Flow ! reset,
 	NewBB = BB#blackboard{cf_flow=NewCF_Flow},
@@ -298,7 +299,7 @@ handle_info({upstream_point, Pid}, LB = #linkBeing{state=#linkState{shape=Shape}
 	Pid ! {?reply, upstream_point, First},
 	{noreply, LB};
 handle_info({'EXIT', _Pid, Reason}, State) ->
-	io:format("Exit received with reason ~w~n", Reason),
+	io:format("Exit received with reason ~p~n", Reason),
     {stop, normal, Reason, State};
 % callback to handle scenario message. This is used to request the execution of a scenario on the link holon.
 % input: {ExecutionType, Scenario, SenderId}
@@ -341,14 +342,15 @@ terminate(normal, S) ->
 terminate(shutdown, S) ->
     io:format("Link ~s got shutdown~n",[(S#linkBeing.state)#linkState.id]);
 terminate(Reason, S) ->
-    io:format("Link ~s got killed with reason ~w~n", [(S#linkBeing.state)#linkState.id,Reason]),
-	io:format("State = ~w ~n", [S]).
+    io:format("Link ~s got killed with reason ~p~n", [(S#linkBeing.state)#linkState.id,Reason]).
 
 %%%%%%%%%%%%%%%%%%%%%%
 % Internal Functions %
 %%%%%%%%%%%%%%%%%%%%%%
 
 density_to_level_of_service(Density, KJam) ->
+	A = (1-Density / KJam),
+	Density == 0 orelse io:format("Density: ~w, KJam: ~w, QoS: ~w~n", [Density, KJam, A]),
 	round(100*(1 - Density / KJam)).
 	
 %% execution of models
@@ -386,7 +388,7 @@ execution({proclaim_flow, #scenario{antState=#antState{creatorId=Id, data=CF}}, 
 	pheromone:create([BB], ?evaporationTime, #info{data={Id, CF}, tags=[flow]}),
 	% propagate flow down 
 	NewCF = link_model:propagate_flow(down,CF, LB),
-	io:format("New CF in link ~w: ~w~n", [LinkId,{Connection#connection.to, cumulative_func:cfs_to_points([{LinkId, NewCF}],[])}]),
+	% io:format("New CF in link ~w: ~w~n", [LinkId,{Connection#connection.to, cumulative_func:cfs_to_points([{LinkId, NewCF}],[])}]),
 	% send new cumulative function back to current flow ant
 	SenderId ! {?reply, proclaim_flow, [{Connection#connection.to, NewCF}]}.
 
@@ -404,3 +406,23 @@ get_flow_pheromone(Blackboard, Id) ->
 		{result_get,[[PheromoneId]]} -> PheromoneId
 		after 2000-> io:format("Waiting too long for response..."), ?undefined
 	end.
+
+get_traffic_update(LB=#linkBeing{state=L, models=#models{fd=FD}}) ->
+	{?reply, linkUpdate, LinkState} = gen_server:call(modum_proxy:get_id(),{linkUpdate, L}, ?callTimeout),
+	% inform downstream node of "new" capacity
+	ToNode = (LinkState#linkState.connection)#connection.to,
+	Capacity = fundamental_diagram:c(FD),
+	ToNode ! {capacityUpdate, LinkState#linkState.id, Capacity},
+	NewLB = LB#linkBeing{state=LinkState},
+	% TODO: use actual traffic updates instead of free flow!!
+	% send current flow ant
+	% LinkState#linkState.avgSpeed == 0 andalso io:format("Link ~w has 0 avgSpeed~n", [LinkState#linkState.id]),
+	TimeToPass = LinkState#linkState.length / LinkState#linkState.maxAllowedSpeed,
+	TimeInterval = 300, % 5 minutes of sampling
+	Flow= fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
+	io:format("Capacity: ~w, Flow: ~w~n", [Capacity,Flow]),
+	NumberOfVehicles = TimeInterval * Flow,
+	Now = util:timestamp(sec,erlang:now()),
+	CumulativeFunction = cumulative_func:add_point(TimeToPass+Now,NumberOfVehicles,cumulative_func:new(Now,0)),
+	traffic_ant:create_current_flow_ant(#location{resource=LinkState#linkState.id}, ToNode, LinkState#linkState.id, CumulativeFunction),
+	NewLB.

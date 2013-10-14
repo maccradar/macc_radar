@@ -229,7 +229,7 @@ execute_scenario(current_flow, _Type) ->
 		Rid ! {proclaim_flow, Scenario, self()},
 		receive
 			{?reply, proclaim_flow, IdCFList} ->
-				io:format("New CFs: ~p~n", [cumulative_func:cfs_to_points(IdCFList,[])]),
+				% io:format("New CFs: ~p~n", [cumulative_func:cfs_to_points(IdCFList,[])]),
 				lists:foreach(fun({Next, CF}) -> create_current_flow_ant(Location, Next, Cid, CF) end, IdCFList), 
 				% io:format("Killing current flow ant at ~w~n", [Location]),
 				?undefined
