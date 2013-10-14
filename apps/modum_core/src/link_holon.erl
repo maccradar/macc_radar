@@ -81,7 +81,7 @@ init([LinkState]) ->
  	timer:send_interval(?blackboardUpdateDelay, updateBlackboard),
     timer:send_interval(?linkConstraintDelay, propagateFlowDown),
 	timer:send_interval(?deleteOldHistoryDelay, deleteOldHistory),
-	timer:send_interval(?sumCumulativesDelay, sumCumulatives),
+% 	timer:send_interval(?sumCumulativesDelay, sumCumulatives),
 	%-record(linkBeing, {state=#linkState{},blackboard,models=#models{}}).
 	BB_b = bb_trafficflow:create("BB_b_"++atom_to_list(LinkState#linkState.id)),
 	BB_e = bb_trafficflow:create("BB_e_"++atom_to_list(LinkState#linkState.id)),
