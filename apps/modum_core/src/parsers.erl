@@ -162,7 +162,7 @@ forecast_server(Xsd) ->
 	end.
 	
 prepare_forecast_output(Forecast) ->
-	[#linkForecastType{id=Id,interval=[#forecastIntervalType{timeStart=T, timeStop=T+TimeStep, travelTime=TravelTime} || {T,TravelTime} <- TravelTimes]} || {Id, TravelTimes, TimeStep} <- Forecast].
+	[#linkForecastType{id=atom_to_list(Id),interval=[#forecastIntervalType{timeStart=float_to_list(T), timeStop=float_to_list(T+TimeStep), travelTime=float_to_list(TravelTime)} || {T,TravelTime} <- TravelTimes]} || {Id, TravelTimes, TimeStep} <- Forecast].
 
 optimal_path_server(Xsd) ->
 	fun(Request) ->
