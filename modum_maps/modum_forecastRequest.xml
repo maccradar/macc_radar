@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <forecastRequest>
-    <timeWindow>7200</timeWindow>
+    <timeWindow>1800</timeWindow>
 </forecastRequest>

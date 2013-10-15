@@ -55,7 +55,7 @@ xmlrpc_client() ->
 		{ok, Command} = erlsom:write(Request, Model),
 		EncCommand = base64:encode_to_string(Command),
 		{ok, Socket} = gen_tcp:connect(Ip,Port,[{active, false}]),
-		case xmlrpc:call(Socket, "/", {call, forecastrequest, [{base64,EncCommand}]}) of
+		case xmlrpc:call(Socket, "/", {call, request, [{base64,EncCommand}]}) of
 			{ok,{response,[EncResponse]}} ->
 				Response = base64:decode_to_string(EncResponse),
 				{ok, Result, _} = erlsom:scan(Response, Model),
@@ -144,7 +144,7 @@ forecast_server(Xsd) ->
 				case erlsom:scan(Request, Model) of
 					{ok, Xml, _} ->
 						TimeWindow = Xml#forecastRequest.timeWindow,
-						F = modum_proxy:get_forecast(TimeWindow),
+						F = modum_proxy:get_forecast(list_to_integer(TimeWindow)),
 						Forecast = prepare_forecast_output(F),
 						C = #forecastResponse{link=Forecast},
 						case erlsom:write(C, Model) of
@@ -162,7 +162,7 @@ forecast_server(Xsd) ->
 	end.
 	
 prepare_forecast_output(Forecast) ->
-	[#linkForecastType{id=atom_to_list(Id),interval=[#forecastIntervalType{timeStart=float_to_list(T), timeStop=float_to_list(T+TimeStep), travelTime=float_to_list(TravelTime)} || {T,TravelTime} <- TravelTimes]} || {Id, TravelTimes, TimeStep} <- Forecast].
+	[#linkForecastType{id=atom_to_list(Id),interval=[#forecastIntervalType{timeStart=integer_to_list(T), timeStop=integer_to_list(T+TimeStep), travelTime=float_to_list(TravelTime)} || {T,TravelTime} <- TravelTimes]} || {Id, TravelTimes, TimeStep} <- Forecast].
 
 optimal_path_server(Xsd) ->
 	fun(Request) ->
@@ -230,6 +230,6 @@ xmlrpc_callback(#comState{parser=Parser}, {call, request, [Command]}) ->
     {false, {response, [EncCommand]}};
 % Fail safe when Payload is unknown
 xmlrpc_callback(_State, Payload) ->
-    FaultString = lists:flatten(io_lib:format("Unknown call: ~p", [Payload])),
-	io:format("Server received: ~p", [Payload]),
+    FaultString = lists:flatten(io_lib:format("Unknown call: ~p~n", [Payload])),
+	io:format("Server received: ~p~n", [Payload]),
     {false, {response, {fault, -1, FaultString}}}.

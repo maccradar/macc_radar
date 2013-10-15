@@ -77,7 +77,7 @@ init([LinkState]) ->
 	?CREATE_DEBUG_TABLE,
     process_flag(trap_exit, true),
     %io:format("Initialized link with state {~w,~w,~w}~n", [LinkState#linkState.id, LinkState#linkState.numLanes, LinkState#linkState.length]),
- 	%timer:send_interval(?mapUpdateDelay, updateMap),
+ 	% timer:send_interval(?mapUpdateDelay, updateMap),
  	timer:send_interval(?blackboardUpdateDelay, updateBlackboard),
     timer:send_interval(?linkConstraintDelay, propagateFlowDown),
 	timer:send_interval(?deleteOldHistoryDelay, deleteOldHistory),
@@ -420,7 +420,7 @@ get_traffic_update(LB=#linkBeing{state=L, models=#models{fd=FD}}) ->
 	TimeToPass = LinkState#linkState.length / LinkState#linkState.maxAllowedSpeed,
 	TimeInterval = 300, % 5 minutes of sampling
 	Flow= fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
-	io:format("Capacity: ~w, Flow: ~w~n", [Capacity,Flow]),
+	% io:format("Capacity: ~w, Flow: ~w~n", [Capacity,Flow]),
 	NumberOfVehicles = TimeInterval * Flow,
 	Now = util:timestamp(sec,erlang:now()),
 	CumulativeFunction = cumulative_func:add_point(TimeToPass+Now,NumberOfVehicles,cumulative_func:new(Now,0)),
