@@ -167,13 +167,13 @@ handle_call({flow_pheromone, Id}, _From, LB=#linkBeing{blackboard=#blackboard{bb
 	P = get_flow_pheromone(BB, Id),
 	{reply, {?reply, flow_pheromone, P}, LB};
 handle_call({travel_time, Times}, _From, LB=#linkBeing{state=#linkState{length=L, maxAllowedSpeed=S}, blackboard=#blackboard{cf_b=?undefined, cf_e=_CF_E}}) ->
-	TravelTimes = [{T, L / S} || T <- Times],
+	TravelTimes = [{T, round(L / S)} || T <- Times],
 	{reply, TravelTimes, LB};
 handle_call({travel_time, Times}, _From, LB=#linkBeing{state=#linkState{length=L, maxAllowedSpeed=S}, blackboard=#blackboard{cf_b=_CF_B, cf_e=?undefined}}) ->
-	TravelTimes = [{T, L / S} || T <- Times],
+	TravelTimes = [{T, 1+trunc(L / S)} || T <- Times],
 	{reply, TravelTimes, LB};
 handle_call({travel_time, Times}, _From, LB=#linkBeing{blackboard=#blackboard{cf_b=CF_B, cf_e=CF_E}}) when is_list(Times) ->
-	TravelTimes = lists:map(fun(Time) -> {Time, cumulative_flow:end_time(util:timestamp(erlang:now())+Time,CF_B,CF_E)} end, Times),
+	TravelTimes = lists:map(fun(Time) -> {Time, 1+trunc(cumulative_flow:end_time(util:timestamp(erlang:now())+Time,CF_B,CF_E))} end, Times),
 	{reply, TravelTimes, LB};
 % default callback for synchronous calls.
 handle_call(_Message, From, S) ->
