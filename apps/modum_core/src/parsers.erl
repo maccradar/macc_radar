@@ -216,7 +216,7 @@ xmlrpc_callback(#comState{parser=Parser}, {call, request, [{base64,Command}]}) -
 	Request = base64:decode_to_string(Command),
 	io:format("Client request: ~p~n", [Request]),
 	Response = Parser(Request),
-	io:format("Server response: ~p~n", [Response]),
+	% io:format("Server response: ~p~n", [Response]),
 	EncCommand = base64:encode_to_string(Response),
     {false, {response, [EncCommand]}};
 
@@ -225,7 +225,7 @@ xmlrpc_callback(#comState{parser=Parser}, {call, request, [Command]}) ->
 	Request = base64:decode_to_string(Command),
 	io:format("Client request 2: ~p~n", [Request]),
 	Response = Parser(Request),
-	io:format("Server response 2: ~p~n", [Response]),
+	% io:format("Server response 2: ~p~n", [Response]),
 	EncCommand = base64:encode_to_string(Response),
     {false, {response, [EncCommand]}};
 % Fail safe when Payload is unknown
