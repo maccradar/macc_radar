@@ -104,8 +104,8 @@ init([ProxyState]) ->
 	%{ok, NodeDict, LinkDict} = parseMap(Map),
 	%{ok, Graph} = createGraph(Map),
 	% start by requesting a traffic update 10 seconds after boot
-	% timer:send_after(10000, traffic_update),
-	% timer:send_interval(?DELAY, traffic_update),
+	timer:send_after(10000, traffic_update),
+	timer:send_interval(?DELAY, traffic_update),
 	{ok, ProxyState#proxyState{nodeInfoDict=dict:new(), linkInfoDict=dict:new(), cache=dict:new()}}.
 	
 % callback for synchronous call to stop the modum client.

@@ -77,11 +77,11 @@ init([LinkState]) ->
 	?CREATE_DEBUG_TABLE,
     process_flag(trap_exit, true),
     %io:format("Initialized link with state {~w,~w,~w}~n", [LinkState#linkState.id, LinkState#linkState.numLanes, LinkState#linkState.length]),
- 	% timer:send_interval(?mapUpdateDelay, updateMap),
+ 	timer:send_interval(?mapUpdateDelay, updateMap),
  	timer:send_interval(?blackboardUpdateDelay, updateBlackboard),
     timer:send_interval(?linkConstraintDelay, propagateFlowDown),
 	timer:send_interval(?deleteOldHistoryDelay, deleteOldHistory),
-	% timer:send_interval(?sumCumulativesDelay, sumCumulatives),
+	timer:send_interval(?sumCumulativesDelay, sumCumulatives),
 	%-record(linkBeing, {state=#linkState{},blackboard,models=#models{}}).
 	BB_b = bb_trafficflow:create("BB_b_"++atom_to_list(LinkState#linkState.id)),
 	BB_e = bb_trafficflow:create("BB_e_"++atom_to_list(LinkState#linkState.id)),
@@ -397,14 +397,14 @@ get_flow_cfs(Blackboard) ->
 	receive
 		{result_get,[]}->[];
 		{result_get,CFs} -> lists:flatten(CFs)
-		after 2000-> io:format("Waiting too long for response..."), ?undefined
+		after 5000-> io:format("Waiting too long for response...~n"), ?undefined
 	end.
 get_flow_pheromone(Blackboard, Id) ->
 	Blackboard ! {get,{'$1',{Id, '_'},'_'},self()},
 	receive
 		{result_get,[]}->?undefined;
 		{result_get,[[PheromoneId]]} -> PheromoneId
-		after 2000-> io:format("Waiting too long for response..."), ?undefined
+		after 5000-> io:format("Waiting too long for response...~n"), ?undefined
 	end.
 
 get_traffic_update(LB=#linkBeing{state=L, models=#models{fd=FD}}) ->

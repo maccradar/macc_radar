@@ -403,7 +403,9 @@ sum(CF1=#func{},CF2=#func{})->
     {FX2,_} = first(x,CF2), 
     FX = min(FX1,FX2), 
     FY = x_y(FX,CF1) + x_y(FX,CF2),
-    sum(CF1,element(1,next(x,FX,CF1)),CF2,element(1,next(x,FX,CF2)),new(FX,FY),{FX,FY});
+	Next1 = next_value(x,FX,CF1),
+	Next2 = next_value(x,FX,CF2)
+    sum(CF1,Next1,CF2,Next2,new(FX,FY),{FX,FY});
 sum(_,CF2=#func{})-> 
 	CF2;
 sum(CF1=#func{},_)->
