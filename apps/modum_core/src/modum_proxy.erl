@@ -113,7 +113,7 @@ handle_call(stop, _From, S=#proxyState{}) ->
     {stop, normal, ok, S};
 % callback for synchronous call to get system time
 handle_call(time, _From, S) ->
-	{reply,{?reply, time, util:timestamp(erlang:now())}, S};
+	{reply,{?reply, time, util:timestamp(sec,erlang:now())}, S};
 % callback for synchronous call to request a node update.
 % this function replies with the most recent node state data, which is retrieved in the node info dictionary.
 handle_call({nodeUpdate, NodeState=#nodeState{id=NodeId}}, _From, S=#proxyState{nodeInfoDict=NodeDict}) ->

@@ -172,7 +172,7 @@ generate_random_traffic() ->
 		CO2 = N1*0.2*S#linkState.length, % 200g/km/car
 		AvgS = (1-Occupancy)*S#linkState.maxAllowedSpeed,
 		Flow = N1 / 300,
-		% io:format("Link ~w: N1 ~w, N2 ~w, Density ~w~n",[L,N1, N2,Density]),
+		Density < 0.2 orelse io:format("Link ~w: N1 ~w, N2 ~w, Length: ~w, Density ~w~n",[L,N1, N2,Length,Density]),
 		#linkInformationType{id=atom_to_list(L), co2emissions=float_to_list(CO2), density=float_to_list(Density), avgSpeed=float_to_list(AvgS), flow=float_to_list(Flow)}
 	end,
 	lists:map(GenFun,Links).

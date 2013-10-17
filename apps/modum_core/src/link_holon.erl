@@ -176,7 +176,7 @@ handle_call({travel_time, Times}, _From, LB=#linkBeing{state=#linkState{length=L
 	TravelTimes = [{T, 1+trunc(L / S)} || T <- Times],
 	{reply, TravelTimes, LB};
 handle_call({travel_time, Times}, _From, LB=#linkBeing{blackboard=#blackboard{cf_b=CF_B, cf_e=CF_E}}) when is_list(Times) ->
-	TravelTimes = lists:map(fun(Time) -> {Time, 1+trunc(cumulative_flow:end_time(util:timestamp(erlang:now())+Time,CF_B,CF_E))} end, Times),
+	TravelTimes = lists:map(fun(Time) -> {Time, 1+trunc(cumulative_flow:end_time(util:timestamp(sec,erlang:now())+Time,CF_B,CF_E))} end, Times),
 	{reply, TravelTimes, LB};
 % default callback for synchronous calls.
 handle_call(_Message, From, S) ->
@@ -196,8 +196,8 @@ handle_info(updateMap, LB) ->
     NewLB = get_traffic_update(LB),
 	{noreply, NewLB};
 handle_info(deleteOldHistory, LB=#linkBeing{state=#linkState{id=Id}}) ->
-	Now = util:timestamp(erlang:now()),
-	Window = util:timestamp(?historyWindow),
+	Now = util:timestamp(sec,erlang:now()),
+	Window = util:timestamp(sec,?historyWindow),
 	_Nbr = ets:select_delete(list_to_atom("history_"++atom_to_list(Id)), ets:fun2ms(fun(#history_item{time=Time}) when Time < Now-Window -> true end)),
 	% io:format("Removed ~w items",[Nbr]);
 	{noreply, LB};
@@ -235,9 +235,8 @@ handle_info(updateBlackboard, #linkBeing{blackboard=BB} = LB)->
 handle_info({updateBlackboard,bb_b,CF_B_points}, #linkBeing{state=#linkState{id=ID},blackboard=BB} = LB)->
 	CF_B = cumulative_flow:get_cumulative(CF_B_points),
 	SumCF = cumulative_func:sum(CF_B, BB#blackboard.cf_flow),
-	io:format("updateBlackboard for ~w bb_b: ~w~n", [ID,SumCF]),
 	NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_b=SumCF}},
-	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_end=BB#blackboard.cf_e,cf_begin=CF_B}),
+	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_end=BB#blackboard.cf_e,cf_begin=CF_B}),
 	{noreply, NewLB};
 % callback to handle updateBlackboard message. This is the reply from the end blackboard with the new cumulative flow
 handle_info({updateBlackboard,bb_e,CF_E_points}, #linkBeing{state=#linkState{id=ID},blackboard=BB} = LB)->
@@ -248,7 +247,7 @@ handle_info({updateBlackboard,bb_e,CF_E_points}, #linkBeing{state=#linkState{id=
 		{CF1, _CF2} -> CF1 % TODO: what do we do here? just replace it?
 	end,
 	NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_e=NewCF_E}},
-	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=BB#blackboard.cf_b,cf_end=NewCF_E}),
+	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=BB#blackboard.cf_b,cf_end=NewCF_E}),
 	{noreply, NewLB};
 % callback to handle propagateFlowDown message. This is periodically called to propagate traffic flow down the link and thereby update the cumulative flows.
 handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboard=BB,models=#models{fd=FD} }) ->
@@ -263,15 +262,15 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 		%%					  CF_B1 =  link_model:accommodate_max_capacity( CF_B, MaxGrad),
 							  SumCF = cumulative_func:sum(CF_B, BB#blackboard.cf_flow),
 							  CF_E1 = link_model:propagate_flow(down,SumCF, LB),
-		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=CF_E}),
+		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=CF_B1,cf_end=CF_E}),
 		%%					  NewLB1 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B1,cf_e=CF_E1}},  
 		%%					  UPContraint = link_model:propagate_flow(up,CF_E1, NewLB1),
-		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=UPContraint}),
+		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=CF_B1,cf_end=UPContraint}),
 		%%					  NewCF_B = cumulative_flow:constrain_cf(CF_B1, UPContraint),
 							  CF_E2 = link_model:accommodate_max_capacity(CF_E1, MaxGrad),
-		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=NewCF_B}),
+		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=CF_B1,cf_end=NewCF_B}),
 							  NewLB2 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B,cf_e=CF_E2}},
-		%%					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=NewCF_B,cf_end=CF_E}),
+		%%					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=NewCF_B,cf_end=CF_E}),
 							  ID ! {updateBeing, NewLB2}
 			end
 		end
@@ -341,7 +340,7 @@ handle_info({get_density, 0, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD}
 	Pid ! {density, Id, {Coordinates,density_to_level_of_service(Density, fundamental_diagram:kjam(FD))}},
 	{noreply, LB};
 handle_info({get_density, Time, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD}, blackboard=#blackboard{cf_b = CF_B, cf_e = CF_E}, state=#linkState{length=L, id=Id, density=_Density, coordinates=Coordinates}}) when L /= 0 ->
-	N = cumulative_flow:nbr_vehicles(util:timestamp(erlang:now())+Time,CF_B,CF_E),
+	N = cumulative_flow:nbr_vehicles(util:timestamp(sec,erlang:now())+Time,CF_B,CF_E),
 	D = density_to_level_of_service(N/L,fundamental_diagram:kjam(FD)),
 	Pid ! {density, Id, {Coordinates,D}},
 	{noreply, LB};

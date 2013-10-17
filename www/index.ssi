@@ -1,8 +1,8 @@
 <h2 id="estimation">Traffic estimation at current time</h2>
-<input type="range" name="time" min="0" max="7200" value="0" step="300" style="width: 600px;" onchange='updateTime(this);'>
+<input type="range" name="time" min="0" max="1800" value="0" step="300" style="width: 600px;" onchange='updateTime(this.value);'>
 <div id="map" style="width: 600px; height: 400px"></div>
 
-	<script>		
+	<script>
 		var serviceURL = "ajax.yaws";
 		var methods = [ "forecasts" ];
 
@@ -10,7 +10,7 @@
 		var service = new jsonrpc.ServiceProxy(serviceURL, methods);
 		
 		var ajax_cache = new ObjectCache(1000);
-		
+		var caching_time = 10*1000;
 		function createRoute(latlon, color) {
                 var point, points = [];
                 for (var i=0; i< latlon.length; i++)
@@ -71,7 +71,7 @@
 
 	//Server side events for traffic density estimation
     var refresh_source = "";
-	
+
 	function refresh(cb) {
 		if(cb.checked) {
 			refresh_source = new EventSource("/density/?primary=1&trunk=1&time="+estimation_time);
@@ -89,16 +89,16 @@
 		}
 	};
 			var estimation_time = 0;
-	function updateTime(time) {
+	function updateTime(timeValue) {
 		var roads = ["trunk","primary","secondary","tertiary"];
-		var request = {time: time.value, roads: roads};
-		var title = time.value / 60;
+		var request = {time: timeValue, roads: roads};
+		var title = timeValue / 60;
 		if(title == 0) 
 			document.getElementById("estimation").innerHTML = "Estimation of current traffic";
 		else
 			document.getElementById("estimation").innerHTML = "Estimation of traffic in " + title + " minutes.";
-		estimation_time = time.value;
-		var routes = ajax_cache.get(request, 5*60*1000);
+		estimation_time = timeValue;
+		var routes = ajax_cache.get(request, caching_time);
 		if(!routes) {
 			try {
 				service.forecasts(request, function(res, err) {
@@ -125,6 +125,7 @@
 			routeLayer.addLayer(createRoute(routes[i][0],level_of_service[routes[i][1]]));
 		}
 	}
+	updateTime("0");
  </script>	
  <label><input type='checkbox' onclick = 'refresh(this);'> Auto refresh</label>
  <h2>Tools</h2>

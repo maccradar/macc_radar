@@ -28,17 +28,14 @@
 %  OF SUCH DAMAGE.                                                                                        %
 %                                                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
-%% Author: bgermain
-%% Created: 4-mrt.-2013
-%% Description: TODO: Add description to util
 -module(util).
 
--export([timestamp/1, timestamp/2]).
-timestamp({Mega, Secs, Micro}) ->
-    Mega*1000*1000*1000*1000 + Secs * 1000 * 1000 + Micro.
+-export([timestamp/2]).
+timestamp(musec,{Mega, Secs, Micro}) ->
+    Mega*1000*1000*1000*1000 + Secs * 1000 * 1000 + Micro;
 	
 timestamp(sec, {Mega, Secs, Micro}) ->
-	timestamp({Mega, Secs, Micro}) / 1000 * 1000;
+	timestamp(musec,{Mega, Secs, Micro}) / (1000 * 1000);
 	
 timestamp(tuple, Seconds) ->
 	{Seconds div 1000000, Seconds rem 1000000, 0}.
