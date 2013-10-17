@@ -31,7 +31,7 @@
 -module(link_holon).
 -behaviour(gen_server).
 
--export([start_link/1, stop/1, execution/2,print_history/3,get_history/3, get_description/1, get_road_type/1]).
+-export([start_link/1, stop/1, execution/2,print_history/3,get_history/3, get_description/1, get_road_type/1, get_state/1]).
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, code_change/3, terminate/2]).
 
@@ -153,7 +153,10 @@ get_description(Id) ->
 get_road_type(Id) ->
 	{?reply, state, Info} = gen_server:call(Id,state,?callTimeout),
 	Info#linkState.roadType.
-	
+
+get_state(Id) ->
+	{?reply, state, Info} = gen_server:call(Id,state,?callTimeout),
+	Info.
 % callback for synchronous call to stop the link holon.
 handle_call(stop, From, S) when is_record(S, linkBeing)->
 	io:format("handle call : stop from ~w ~n ",[From]),
@@ -182,6 +185,8 @@ handle_call(_Message, From, S) ->
 handle_cast(traffic_update, LB) ->
 	NewLB = get_traffic_update(LB),
     {noreply, NewLB};
+handle_cast({updateBeing,B}, _LB) ->
+	{noreply, B};
 % default callback for asynchronous casts.
 handle_cast(_Message, S) ->
 	io:format("handle cast: state =  ~w ~n ",[S]),
@@ -198,40 +203,52 @@ handle_info(deleteOldHistory, LB=#linkBeing{state=#linkState{id=Id}}) ->
 	{noreply, LB};
 
 handle_info(sumCumulatives, LB=#linkBeing{state=#linkState{id=Id}, blackboard=BB}) ->
-	BB_Flow = BB#blackboard.bb_flow,
-	CF_Flow = BB#blackboard.cf_flow,
-	CFs = get_flow_cfs(BB_Flow),
-	% CFs == [] orelse io:format("Summing CFs for link ~w: ~p~n", [Id, [cumulative_func:cf_to_points(C) || C <- CFs]]),
-	% sum all cumulatives with current CF_Flow?
-	NewCF_Flow = case CF_Flow of
-		?undefined -> cumulative_func:sum(CFs);
-		[] -> cumulative_func:sum(CFs);
-		_ -> cumulative_func:sum([CF_Flow | CFs])
-	end,
-	% NewCF_Flow == [] orelse io:format("New CF_Flow for link ~w: ~w~n", [Id, cumulative_func:cf_to_points(NewCF_Flow)]),
-	% clear blackboard?
-	BB_Flow ! reset,
-	NewBB = BB#blackboard{cf_flow=NewCF_Flow},
-	NewLB = LB#linkBeing{blackboard=NewBB},
-	{noreply, NewLB};
+	spawn(
+		fun() ->
+			BB_Flow = BB#blackboard.bb_flow,
+			CF_Flow = BB#blackboard.cf_flow,
+			CFs = get_flow_cfs(BB_Flow),
+			% CFs == [] orelse io:format("Summing CFs for link ~w: ~p~n", [Id, [cumulative_func:cf_to_points(C) || C <- CFs]]),
+			% sum all cumulatives with current CF_Flow?
+			NewCF_Flow = case CF_Flow of
+				?undefined -> cumulative_func:sum(CFs);
+				[] -> cumulative_func:sum(CFs);
+				_ -> cumulative_func:sum([CF_Flow | CFs])
+			end,
+			% NewCF_Flow == [] orelse io:format("New CF_Flow for link ~w: ~w~n", [Id, cumulative_func:cf_to_points(NewCF_Flow)]),
+			% clear blackboard?
+			BB_Flow ! reset,
+			NewBB = BB#blackboard{cf_flow=NewCF_Flow},
+			NewLB = LB#linkBeing{blackboard=NewBB},
+			gen_server:cast(Id,{updateBeing, NewLB})
+		end
+	),
+	{noreply, LB};
 	
 % callback to handle updateBlackboard message. This is periodically called to update the cumulative flows, maintained by the blackboards.
 handle_info(updateBlackboard, #linkBeing{blackboard=BB} = LB)->
 	bb_trafficflow:request_cumulative(BB#blackboard.bb_b,bb_b),
-	bb_trafficflow:request_cumulative(BB#blackboard.bb_e,bb_e),
+	% bb_trafficflow:request_cumulative(BB#blackboard.bb_e,bb_e),
 	{noreply, LB};
 
 % callback to handle updateBlackboard message. This is the reply from the begin blackboard with the new cumulative flow
 handle_info({updateBlackboard,bb_b,CF_B_points}, #linkBeing{state=#linkState{id=ID},blackboard=BB} = LB)->
 	CF_B = cumulative_flow:get_cumulative(CF_B_points),
-	NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B}},
+	SumCF = cumulative_func:sum(CF_B, BB#blackboard.cf_flow),
+	io:format("updateBlackboard for ~w bb_b: ~w~n", [ID,SumCF]),
+	NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_b=SumCF}},
 	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_end=BB#blackboard.cf_e,cf_begin=CF_B}),
 	{noreply, NewLB};
 % callback to handle updateBlackboard message. This is the reply from the end blackboard with the new cumulative flow
 handle_info({updateBlackboard,bb_e,CF_E_points}, #linkBeing{state=#linkState{id=ID},blackboard=BB} = LB)->
 	CF_E = cumulative_flow:get_cumulative(CF_E_points),
-	NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_e=CF_E}},
-	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=BB#blackboard.cf_b,cf_end=CF_E}),
+	NewCF_E = case {CF_E, BB#blackboard.cf_e} of
+		{?undefined, CF2} -> CF2;
+		{CF1, ?undefined} -> CF1;
+		{CF1, _CF2} -> CF1 % TODO: what do we do here? just replace it?
+	end,
+	NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_e=NewCF_E}},
+	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=BB#blackboard.cf_b,cf_end=NewCF_E}),
 	{noreply, NewLB};
 % callback to handle propagateFlowDown message. This is periodically called to propagate traffic flow down the link and thereby update the cumulative flows.
 handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboard=BB,models=#models{fd=FD} }) ->
@@ -239,7 +256,7 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 		fun() ->
 			% only propagateFlowDown if CF_B and CF_E is not undefined
 			case {BB#blackboard.cf_b,BB#blackboard.cf_e } of
-				{CF_B, CF_E} when ((CF_B == ?undefined) or (CF_E == ?undefined)) -> void;
+				{CF_B, _CF_E} when (CF_B == ?undefined) -> void;
 							 % io:format("CF_B undefined. not propagating flow down~n"),
 							 % {noreply, LB};
 				{CF_B, _CF_E}->MaxGrad = fundamental_diagram:c(FD),
@@ -253,14 +270,15 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 		%%					  NewCF_B = cumulative_flow:constrain_cf(CF_B1, UPContraint),
 							  CF_E2 = link_model:accommodate_max_capacity(CF_E1, MaxGrad),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=CF_B1,cf_end=NewCF_B}),
-							  NewLB2 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B,cf_e=CF_E2}}, 
+							  NewLB2 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B,cf_e=CF_E2}},
 		%%					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(erlang:now()),cf_begin=NewCF_B,cf_end=CF_E}),
 							  ID ! {updateBeing, NewLB2}
 			end
 		end
 	),
 	{noreply,LB};
-handle_info({updateBeing,B}, _LB) ->
+handle_info({updateBeing,B = #linkBeing{blackboard=#blackboard{cf_b=_CF_B, cf_e=_CF_E, cf_flow=_CF_Flow}}}, _LB) ->
+	% io:format("Link being update: ~w~n", [{CF_B,CF_E,CF_Flow}]),
 	{noreply, B};
 % callback to handle state message. This is used to request the link state record.
 % the caller's Pid or registered name is required in the message to be able to send the reply.
@@ -366,7 +384,7 @@ execution({proclaim, #scenario{timeSlot={Time,_},antState=#antState{creatorId=Ve
 	% apply travel time model  
 	ET =(M#models.ttm)(Time,LB),
 	case ET of
-		ET when ((is_number(ET)) and (ET > Time)) -> pheromone:create([B#blackboard.bb_e], ?evaporationTime,#vehicle_info{vehicle=VehicleId, arrival_time=ET,data=void}),
+		ET when ((is_number(ET)) and (ET > Time)) -> % pheromone:create([B#blackboard.bb_e], ?evaporationTime,#vehicle_info{vehicle=VehicleId, arrival_time=ET,data=void}),
 								  SenderId ! {?reply,proclaim, ET};
 		T -> io:format("end time is not calculated correctly ~w~n",[T])
 	end;
@@ -378,7 +396,7 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, LB=#linkBe
 			SenderId ! {?reply,explore_upstream, ET};
 		T -> io:format("start time is not calculated correctly ~w~n",[T])
 	end;
-execution({proclaim_flow, #scenario{antState=#antState{creatorId=Id, data=CF}}, SenderId}, LB=#linkBeing{blackboard=#blackboard{bb_flow=BB},state=#linkState{id=LinkId, connection = Connection}}) ->
+execution({proclaim_flow, #scenario{antState=#antState{creatorId=Id, data=CF}}, SenderId}, LB=#linkBeing{blackboard=#blackboard{bb_flow=BB},state=#linkState{connection = Connection}}) ->
 	% check if blackboard already has already an entry from the same creatorId
 	% P = get_flow_pheromone(BB, Id),
 	% if pheromone is found, evaporate it -- don't replace it
@@ -396,15 +414,17 @@ get_flow_cfs(Blackboard) ->
 	Blackboard ! {get,{'_',{'_', '$1'},'_'},self()},
 	receive
 		{result_get,[]}->[];
-		{result_get,CFs} -> lists:flatten(CFs)
-		after 5000-> io:format("Waiting too long for response...~n"), ?undefined
+		{result_get,CFs} -> lists:flatten(CFs);
+		M -> io:format("Received unknown message expected flow result: ~w~n", [M])
+		after 10000-> io:format("Waiting too long for flow response...~n"), []
 	end.
 get_flow_pheromone(Blackboard, Id) ->
 	Blackboard ! {get,{'$1',{Id, '_'},'_'},self()},
 	receive
 		{result_get,[]}->?undefined;
-		{result_get,[[PheromoneId]]} -> PheromoneId
-		after 5000-> io:format("Waiting too long for response...~n"), ?undefined
+		{result_get,[[PheromoneId]]} -> PheromoneId;
+		M -> io:format("Received unknown message expected pheromone result: ~w~n", [M])
+		after 5000-> io:format("Waiting too long for pheromone response...~n"), ?undefined
 	end.
 
 get_traffic_update(LB=#linkBeing{state=L, models=#models{fd=FD}}) ->
