@@ -121,8 +121,9 @@ traffic_update_server(Xsd) ->
 			{ok, Model} ->
 				case erlsom:scan(Request, Model) of
 					{ok, Xml, _} ->
-						{ok, Response, _} = erlsom:scan_file(filename:join([ProjectDir,ComDir,"modum_updateResponse.xml"]), Model),
-						C = Response#updateResponse{extrastatus=Xml#updateRequest.commandString},
+						% {ok, Response, _} = erlsom:scan_file(filename:join([ProjectDir,ComDir,"modum_updateResponse.xml"]), Model),
+						% C = Response#updateResponse{extrastatus=Xml#updateRequest.commandString},
+						C = #updateResponse{id="random", ok=true, extrastatus="Nothing", map=#mapInformationType{name="Nottingham", version="1", link=generate_random_traffic()}},
 						case erlsom:write(C, Model) of
 							{ok, Command} ->
 								Command;
@@ -160,7 +161,24 @@ forecast_server(Xsd) ->
 				Error
 		end
 	end.
-	
+
+generate_random_traffic() ->
+	{Links, Nodes} = modum_proxy:get_status_info(),
+	GenFun = fun(L) ->
+		S = link_holon:get_state(L),
+		Length = S#linkState.length,
+		N1 = random:uniform(1000), % vehicles which have passed in the last 5 minutes
+		N2 = min(random:uniform(trunc(Length / 5)+1), N1) , % vehicles on link, should be less than the amount of vehicles that have passed and also less the the maximum amount of 5m vehicles
+		Density = N2 / Length,
+		Occupancy = Density * 5,
+		CO2 = N1*0.2*S#linkState.length, % 200g/km/car
+		AvgS = (1-Occupancy)*S#linkState.maxAllowedSpeed,
+		Flow = N1 / 300,
+		% io:format("Link ~w: N1 ~w, N2 ~w, Density ~w~n",[L,N1, N2,Density]),
+		#linkInformationType{id=atom_to_list(L), co2emissions=float_to_list(CO2), density=float_to_list(Density), avgSpeed=float_to_list(AvgS), flow=float_to_list(Flow)}
+	end,
+	lists:map(GenFun,Links).
+
 prepare_forecast_output(Forecast) ->
 	[#linkForecastType{id=atom_to_list(Id),interval=[#forecastIntervalType{timeStart=integer_to_list(T), timeStop=integer_to_list(T+TimeStep), travelTime=integer_to_list(TravelTime)} || {T,TravelTime} <- TravelTimes]} || {Id, TravelTimes, TimeStep} <- Forecast].
 
