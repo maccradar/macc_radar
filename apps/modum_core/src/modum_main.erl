@@ -232,19 +232,19 @@ get_connections(?node_out, _ , #nodeState{connections=C}) ->
 get_connections(_, _ , _) -> 
 	[].
 	
-get_id(?link_in,_To,_Id)->
-	?node_in;
-get_id(_In,?link_out,_Id)->
-	?node_out;
-get_id(_In,_Out, Id) ->
-	Id.
+% get_id(?link_in,_To,_Id)->
+	% ?node_in;
+% get_id(_In,?link_out,_Id)->
+	% ?node_out;
+% get_id(_In,_Out, Id) ->
+	% Id.
 	
 shape_to_points(Shape) ->
 	Ps = string:tokens(Shape," "),
 	F = fun(P) -> [X,Y] = string:tokens(P, ","), #point{x=list_to_float(X),y=list_to_float(Y)} end,
 	lists:map(F, Ps).
 
-add_turning_fractions({Nodes, Links}) ->
+add_turning_fractions({Nodes, _Links}) ->
 	{ok, ProjectDir} = application:get_env(modum_core,project_dir),
 	{ok, ComDir} = application:get_env(modum_core,com_dir),
 	{ok, TurnDefsFile} = application:get_env(modum_core,turn_defs),

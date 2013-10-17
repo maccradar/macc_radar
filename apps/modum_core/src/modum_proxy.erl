@@ -182,7 +182,7 @@ handle_call({forecast, TimeWindow}, _From, State = #proxyState{links=Links}) ->
 % default callback for synchronous calls.
 handle_call(_Message, _From, S) ->
     {noreply, S}.
-handle_cast({traffic_update_response, Response}, S = #proxyState{model=Model, linkInfoDict=Dict, clients=Clients}) ->
+handle_cast({traffic_update_response, Response}, S=#proxyState{linkInfoDict=Dict}) ->
 	NewDict = case Response of
 		?undefined -> Dict;
 		_ -> 	io:format("Received parsed response, updating link states~n"),
@@ -195,7 +195,7 @@ handle_cast(_Message, S) ->
     {noreply, S}.
 
 % callback to handle the interval message. This is used to trigger an update request to the UTMC server.
-handle_info(traffic_update, S = #proxyState{model=Model, linkInfoDict=Dict, clients=Clients}) ->
+handle_info(traffic_update, S = #proxyState{model=Model, clients=Clients}) ->
     [TUC | _] = [C || {N,C} <- Clients, N == ?traffic_update_client],
 	%{transmit, Response} = 
 	gen_server:cast(TUC,{transmit, {async, Model}}),
@@ -296,7 +296,7 @@ addLinkToGraph(_G,L,[]) ->
 
 updateLinkStates(Dict, []) ->
 	Dict;
-updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=Density} | Rest]) ->
+updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=_Density} | Rest]) ->
 	% list_to_float(Density) == 0.0 orelse io:format("new density for link ~w: ~w~n",[list_to_atom(Id),list_to_float(Density)]),
 	NewDict = dict:store(list_to_atom(Id), LinkInfo, Dict),
 	% inform link immediately:

@@ -115,12 +115,10 @@ traffic_update_client() ->
 	
 traffic_update_server(Xsd) ->
 	fun(Request) ->
-		{ok, ProjectDir} = application:get_env(modum_core, project_dir),
-		{ok, ComDir} = application:get_env(modum_core,com_dir),
 		case erlsom:compile_xsd_file(Xsd) of
 			{ok, Model} ->
 				case erlsom:scan(Request, Model) of
-					{ok, Xml, _} ->
+					{ok, _Xml, _} ->
 						% {ok, Response, _} = erlsom:scan_file(filename:join([ProjectDir,ComDir,"modum_updateResponse.xml"]), Model),
 						% C = Response#updateResponse{extrastatus=Xml#updateRequest.commandString},
 						C = #updateResponse{id="random", ok=true, extrastatus="Nothing", map=#mapInformationType{name="Nottingham", version="1", link=generate_random_traffic()}},
@@ -163,7 +161,7 @@ forecast_server(Xsd) ->
 	end.
 
 generate_random_traffic() ->
-	{Links, Nodes} = modum_proxy:get_status_info(),
+	{Links, _Nodes} = modum_proxy:get_status_info(),
 	GenFun = fun(L) ->
 		S = link_holon:get_state(L),
 		Length = S#linkState.length,
@@ -187,7 +185,7 @@ optimal_path_server(Xsd) ->
 		case erlsom:compile_xsd_file(Xsd) of
 			{ok, Model} ->
 				case erlsom:scan(Request, Model) of
-					{ok, Xml, _} ->
+					{ok, _Xml, _} ->
 						C = #userResponse{userId="ok"},
 						case erlsom:write(C, Model) of
 							{ok, Command} ->
