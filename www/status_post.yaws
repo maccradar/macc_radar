@@ -32,7 +32,8 @@
 
 -include_lib("modum_core/include/states.hrl").
  out(A) ->
-	{ok, L} = postvar(A,"link"),
+	{ok, LV} = postvar(A,"link"),
+	[_, L] = string:tokens(LV, " : "),
 	%PNG = link_model:cfs_to_png_raw(list_to_atom(L), 400, 300),
 	%IMG = base64:encode_to_string(PNG),
 	P = link_model:cfs_to_points_raw(list_to_atom(L)),

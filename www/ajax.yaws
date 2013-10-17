@@ -14,7 +14,14 @@ out(A) ->
     A2=A#arg{state = [{ip, IP}]},
     yaws_rpc:handler_session(A2, {?MODULE, callback}).
 
-	
+callback([{ip, IP}] = _State, {call, status_info, {array, [{struct,Value}]}} = _Request, Session) ->
+	[{"linkId", LId}] = Value,
+	io:format("Requesting status info for link ~p~n", [LId]),
+	P = link_model:cfs_to_points_raw(list_to_atom(LId)),
+	[CF_B,CF_E] = [[[atom_to_list(N) | tuple_to_list(T)]|| T<-X] || {N,X} <- P],
+	Points = [CF_B++CF_E],
+	io:format("Points: ~p~n",[Points]),
+	{true, 0, Session, {response, {array, Points}}};
 callback([{ip, IP}] = _State, {call, run_simulation, {array,[{struct,Value}]}} = _Request, Session) ->
 	io:format("Running simulation with following parameters:~n~p~n", [Value]),
 	[	{"simulate", S}, 

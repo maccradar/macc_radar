@@ -35,6 +35,6 @@ out(A) ->
 		[{"xsd", "1"}] -> [{ssi, "MobilePhoneRequestInterfaceService_schema1.xsd","%",[]}];
 		[{"wsdl", undefined}] -> [{ssi, "MobilePhoneRequestInterfaceService.wsdl","%",[]}];
 		[] -> Center = [52.95319, -1.1479], % Nottingham city centre
-		[{ssi,"modum.ssi","%",[]},{ssi,"header.ssi", "%", [{"title", "MECA KU Leuven Home"}]},{ssi,"index.ssi", "%",[{"center", lists:flatten(io_lib:format("~p", [Center]))}]}, {ssi,"footer.ssi", "%", []}]
+		[{ssi,"header.ssi", "%", [{"title", "MECA KU Leuven Home"}]},{ssi,"modum.ssi","%",[]},{ssi,"index.ssi", "%",[{"center", lists:flatten(io_lib:format("~p", [Center]))}]}, {ssi,"footer.ssi", "%", []}]
 	end.
 </erl>

@@ -1,7 +1,7 @@
  <div>
-  <form method="post" action="/status_post.yaws">
+  <form onsubmit="return status_info();">
     <p>
-      Traffic status info: 
+      Link status info: 
 	  <input list="links" name="link" id="link">
 	  <datalist id="links">
 	  </datalist>
@@ -9,16 +9,125 @@
       <input type="submit" />
     </div>
   </form>
+  <div id="messages"></div>
   </div>
-<script>
+  <div id="header"></div>
+  <div id="cfs"></div>
+  <label><input type='checkbox' onclick = 'refresh(this);'> Auto refresh</label>
+  <label><input type='checkbox' onclick = 'show_history(this);'> Show history</label>
+  <div id="history"></div>
+ <script>
+	var serviceURL = "ajax.yaws";
+	var methods = ["status_info"];
+	var jsonrpc = imprt("jsonrpc");
+	var service = new jsonrpc.ServiceProxy(serviceURL, methods);
+
 	var l = document.getElementById("links"); 
 	var options = %linkNames%;
 	var values = %linkIds%;
 	
 	for(var i = 0; i < options.length; i++) {
 		var el = document.createElement("option");
-		el.textContent = values[i];
-		el.value = options[i];
+		el.value = options[i] + " : " + values[i];
 		l.appendChild(el);
 	} 
+	
+	function status_info() {
+		var messages = document.getElementById("messages");
+		var header = document.getElementById("header");
+		var Id = document.getElementById("link").value.split(" : "); 
+		var request = {	linkId: Id[1] };
+	try {
+		service.status_info(request, function(res, err) {
+			if (res) {
+				if(res == "failure") {
+					messages.innerHTML = "Sorry, no status info was found.";
+				} else {
+					lastResponse = res[0];
+					var points = convertPoints(lastResponse);
+					console.log(points);
+					var g = new Dygraph(document.getElementById("cfs"),points, {labels: ["x", "cf_b", "cf_e"]});
+					header.innerHTML = "<h1>Status info of " + Id[0] +"</h1>"
+					messages.innerHTML = "";
+				}	
+			} else if (err) {
+				messages.innerHTML = "Error processing request. Please try again.";
+				console.log(err);
+			}
+		}
+		);			
+	} catch(e) {
+		alert(e);
+	}
+	return false; // to avoid redirect on form submit
+	}
+
+ //Server side events for status updates
+    var refresh_source = "";
+	var history_source = "";
+	
+	function refresh(cb) {
+		if(cb.checked) {
+			var l = window.btoa("%link%");
+			refresh_source = new EventSource("/cfs/"+l);
+			refresh_source.onmessage = function(event) {
+				var p = convertEncPoints(event.data);
+				var h = new Dygraph(document.getElementById("cfs"),p, {labels: ["x", "cf_b", "cf_e"]});
+				
+			};
+		}
+		else {
+			refresh_source.close();
+		}
+	};
+	
+	function show_history(cb) {
+		var history = document.getElementById("history");
+		if(cb.checked) {
+			var l = window.btoa("%link%");
+			history.innerHTML="";
+			var header = document.createElement("h2");
+			header.textContent = "History";
+			history.appendChild(header);
+			history_source = new EventSource("/history/"+l);
+			history_source.onmessage = function(event) {
+				//var img=document.createElement("img");
+				//img.src="data:binary;base64, " + event.data;
+				var div = document.createElement("div");
+				var g = new Dygraph(div,convertEncPoints(event.data), {labels: ["x", "cf_b", "cf_e"]});
+				history.appendChild(div);
+			};
+			history.style.display = 'block';
+		}
+		else {
+			history_source.close();
+			history.style.display = 'none';
+		}
+	};
+	
+	
+	
+	
+	function convertEncPoints(encpoints) {
+		var p = window.atob(encpoints);
+		var points = eval(p);
+		return convertPoints(points);
+	}
+	function convertPoints(points) {
+		for(var i = 0; i<points.length; i++) {
+			console.log(points[i][0]);
+			if(points[i][0] == "cf_b") {
+				console.log("cf_b " + points[i]);
+				points[i][0] = points[i][1]-(new Date() / 1000);
+				points[i][1] = points[i][2];
+				points[i][2] = null;
+			} else if(points[i][0] == "cf_e") {
+				console.log("cf_e " + points[i]);
+				points[i][0] = points[i][1]-(new Date() / 1000);
+				points[i][1] = null;
+			}
+		}
+		return points;
+	};
+	
 </script>
