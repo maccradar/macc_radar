@@ -189,7 +189,7 @@ create_intention_ant(CurrentTime, CurrentLocation, VehicleId, Solution) ->
 create_current_flow_ant(CurrentLocation, NextResource, CreatorId, CumulativeFunction) ->
 	AntState = #antState{location=#location{resource=NextResource,position=?link_in},creatorId=CreatorId,data=CumulativeFunction},
 	CreateScenario = 	(fun(Cur_AntState=#antState{location=L}, _History) ->
-							% io:format("Creating current flow ant at ~w~n",[L]),
+							% io:format("Creating current flow ant at ~w with creatorId ~w~n",[L,CreatorId]),
 							#scenario{antState=Cur_AntState,boundaryCondition=CurrentLocation#location.resource}
 						end),
 	ExecuteScenario = execute_scenario(current_flow, normal),
@@ -226,14 +226,16 @@ execute_scenario(intention, _Type) ->
 	end;
 execute_scenario(current_flow, _Type) ->
 	fun(Scenario=#scenario{boundaryCondition= PrevResource,antState=#antState{location=Location=#location{resource=Rid},creatorId=Cid}}) ->
+		whereis(Rid) == undefined andalso io:format("Rid ~w undefined!~n", [Rid]),
 		Rid ! {proclaim_flow, Scenario, self()},
-		receive
-			{?reply, proclaim_flow, IdCFList} ->
-				% io:format("New CFs: ~p~n", [cumulative_func:cfs_to_points(IdCFList,[])]),
-				lists:foreach(fun({Next, CF}) -> create_current_flow_ant(Location, Next, Cid, CF) end, IdCFList), 
-				% io:format("Killing current flow ant at ~w~n", [Location]),
-				?undefined
-		end;
+		?undefined;
+		% receive
+		% 	{?reply, proclaim_flow, IdCFList} ->
+		%		% io:format("New CFs: ~p~n", [cumulative_func:cfs_to_points(IdCFList,[])]),
+		%		lists:foreach(fun({Next, CF}) -> create_current_flow_ant(Location, Next, Cid, CF) end, IdCFList), 
+		%		% io:format("Killing current flow ant at ~w~n", [Location]),
+		%		?undefined
+		% end;
 		(?undefined) -> ?undefined
 	end;
 execute_scenario(_,_) ->

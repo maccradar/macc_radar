@@ -187,9 +187,14 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, #nodeBeing
 			SenderId ! {?reply,explore_upstream, ET};
 		T -> io:format("start time is not calculated correctly ~w~n",[T])
 	end;
-execution({proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antState{data=CF}}, SenderId}, NB = #nodeBeing{state=#nodeState{connections = Connections, turningFractions=TurningFractionDict}}) ->
+execution({proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antState{location=Location=#location{resource=Rid},creatorId=Cid,data=CF}}, _SenderId}, NB = #nodeBeing{state=#nodeState{connections = Connections, turningFractions=TurningFractionDict}}) ->
 	% get turning fractions and multiply them with the given cumulative to obtain new cumulatives to pass to the links
-	CFs = [{To, cumulative_func:multiply(y, dict:fetch({From, To},TurningFractionDict), CF)} || #connection{from = From, to = To} <- Connections ,From == Previous],
+	CFs = [{To, cumulative_func:multiply(y, dict:fetch({From, To},TurningFractionDict), CF)} || #connection{from = From, to = To} <- Connections, From == Previous, To /= ?link_out],
 	% filter out cumulatives with a largest y value (# vehicles) smaller than or equal to 1
 	NewCFs = lists:filter(fun(X = {_, NewCF}) -> {Y, _} =  cumulative_func:last(y, NewCF), Y > 1 end, CFs),
-	SenderId ! {?reply, proclaim_flow, NewCFs}.
+	spawn(
+		fun() ->
+			lists:foreach(fun({Next, NextCF}) -> traffic_ant:create_current_flow_ant(Location, Next, Cid, NextCF) end, NewCFs)
+		end
+	).
+	% SenderId ! {?reply, proclaim_flow, NewCFs}.

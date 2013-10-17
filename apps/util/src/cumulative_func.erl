@@ -404,7 +404,9 @@ sum(CF1=#func{},CF2=#func{})->
     FX = min(FX1,FX2), 
     FY = x_y(FX,CF1) + x_y(FX,CF2),
 	Next1 = next_value(x,FX,CF1),
-	Next2 = next_value(x,FX,CF2)
+	Next2 = next_value(x,FX,CF2),
+	% Next1 == nil andalso io:format("Next1 = nil"),
+	% Next2 == nil andalso io:format("Next2 = nil"),
     sum(CF1,Next1,CF2,Next2,new(FX,FY),{FX,FY});
 sum(_,CF2=#func{})-> 
 	CF2;
