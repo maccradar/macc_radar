@@ -160,19 +160,27 @@ forecast_server(Xsd) ->
 		end
 	end.
 
+density(_N, L) when (L < ?vehicle_length) ->
+	0.0;
+density(N, L) when (L >= ?vehicle_length) ->
+	N / L.
+	
 generate_random_traffic() ->
 	{Links, _Nodes} = modum_proxy:get_status_info(),
 	GenFun = fun(L) ->
-		S = link_holon:get_state(L),
+		SimulationTime = 300,
+		{?reply, being, #linkBeing{state=S, models=#models{fd=FD}}} = gen_server:call(L, being, ?callTimeout),
+		FreeFlow= fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
 		Length = S#linkState.length,
-		N1 = random:uniform(1000), % vehicles which have passed in the last 5 minutes
-		N2 = min(random:uniform(trunc(Length / 5)+1), N1) , % vehicles on link, should be less than the amount of vehicles that have passed and also less the the maximum amount of 5m vehicles
-		Density = N2 / Length,
-		Occupancy = Density * 5,
+		Lanes = S#linkState.numLanes,
+		N1 = random:uniform(round(SimulationTime * FreeFlow)), % vehicles which have passed in the last 5 minutes
+		N2 = trunc(min(random:uniform()*N1, (Length*Lanes) / ?vehicle_length)), % vehicles on link, should be less than the amount of vehicles that have passed and also less the the maximum amount of 5m vehicles
+		Density = density(N2, Length),
+		Occupancy = Density * ?vehicle_length,
 		CO2 = N1*0.2*S#linkState.length, % 200g/km/car
 		AvgS = (1-Occupancy)*S#linkState.maxAllowedSpeed,
-		Flow = N1 / 300,
-		Density < 0.2 orelse io:format("Link ~w: N1 ~w, N2 ~w, Length: ~w, Density ~w~n",[L,N1, N2,Length,Density]),
+		Flow = N1 / SimulationTime,
+		Density =< ((1 / ?vehicle_length) * Lanes) orelse io:format("Link ~w: N1 ~w, N2 ~w, NumLanes: ~w, Length: ~w, Density ~w~n",[L,N1, N2, Lanes, Length,Density]),
 		#linkInformationType{id=atom_to_list(L), co2emissions=float_to_list(CO2), density=float_to_list(Density), avgSpeed=float_to_list(AvgS), flow=float_to_list(Flow)}
 	end,
 	lists:map(GenFun,Links).
