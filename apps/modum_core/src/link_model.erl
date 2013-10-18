@@ -42,13 +42,13 @@
 propagate_flow(down,CF,OldState)->
 	{T,_} = cumulative_func:first(x,CF),
 	propagate_flow(down,CF, ?undefined, T, OldState);
-propagate_flow(up,CF,OldState=#linkBeing{models = #models{fd = FD},blackboard = #blackboard{cf_b=OldCF_B}})->
+propagate_flow(up,CF,OldState=#linkBeing{models = #models{fd = FD},blackboard = #blackboard{cf_b=_OldCF_B}})->
 	{T,_} = cumulative_func:last(x,CF),
 	ContraintUp1 = propagate_flow(up,?undefined,CF, T,OldState ),
 	{Yf,_} = cumulative_func:first(y, CF),
 	{_,S} = cumulative_func:first(y, ContraintUp1),
 	Xf = line_segment:y_x(Yf, line_segment:get(x1, S), line_segment:get(y1, S), fundamental_diagram:c(FD)),
-	ContraintUp2 = cumulative_func:add_point(Xf, Yf, ContraintUp1).
+	_ContraintUp2 = cumulative_func:add_point(Xf, Yf, ContraintUp1).
 
 
 
@@ -96,7 +96,7 @@ start_time(T,#linkBeing{models=#models{fd=FD},state=#linkState{length=L},blackbo
 get_travel_times(LB=#linkBeing{blackboard=#blackboard{cf_b=CF_B,cf_e=CF_E}})->
 	get_travel_times(LB,[],element(1,cumulative_func:first(x, CF_B)),element(1,cumulative_func:last(x, CF_E))).
 		
-get_travel_times(LB,TT,T,MAXT) when T>MAXT->
+get_travel_times(_LB,TT,T,MAXT) when T>MAXT->
 	lists:reverse(TT);
 get_travel_times(LB,TT,T,MAXT)->
 	get_travel_times(LB,[{T,end_time(T, LB)}|TT],T+1,MAXT).

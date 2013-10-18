@@ -144,7 +144,7 @@ create_explorer_ant(Type=shortest_path,CurrentTime, CurrentLocation, Destination
 	ant:create(#ant{createScenario=CreateScenario,executeScenario=ExecuteScenario,state=AntState,history=[]},?undefined);
 create_explorer_ant(Type={upstream,Path},EndTime, CurrentLocation, Destination, VehicleId) ->
 	[_ | P] = lists:reverse(Path),
-	{PathDict, PathSize} = lists:foldl(fun(R,{D,K}) -> {dict:store(K, R, D), K+1} end, {dict:new(),0}, P),
+	{PathDict, _PathSize} = lists:foldl(fun(R,{D,K}) -> {dict:store(K, R, D), K+1} end, {dict:new(),0}, P),
 	AntState = #antState{location=CurrentLocation,creatorId=VehicleId, data=EndTime},
 	CreateScenario = (fun(Cur_AntState=#antState{location=Current,data=Time}, History) -> 
 							   case Current#location.resource == Destination#location.resource of % check if destination has been reached.
@@ -171,7 +171,7 @@ history_to_solution(History)->
     Solution.
                       
 create_intention_ant(CurrentTime, CurrentLocation, VehicleId, Solution) ->
-	{SolutionDict, SolutionSize} = lists:foldl(fun(S,{D,K}) -> {dict:store(K, S, D), K+1} end, {dict:new(),0}, Solution),
+	{SolutionDict, _SolutionSize} = lists:foldl(fun(S,{D,K}) -> {dict:store(K, S, D), K+1} end, {dict:new(),0}, Solution),
 	AntState = #antState{location=CurrentLocation,creatorId=VehicleId, data=CurrentTime},
 	
 	CreateScenario = (fun(Cur_AntState = #antState{location=CurLocation,data=Time},History) -> 
@@ -188,7 +188,7 @@ create_intention_ant(CurrentTime, CurrentLocation, VehicleId, Solution) ->
 	ant:create(#ant{createScenario=CreateScenario,executeScenario=ExecuteScenario,state=AntState,history=[]}).
 create_current_flow_ant(CurrentLocation, NextResource, CreatorId, CumulativeFunction) ->
 	AntState = #antState{location=#location{resource=NextResource,position=?link_in},creatorId=CreatorId,data=CumulativeFunction},
-	CreateScenario = 	(fun(Cur_AntState=#antState{location=L}, _History) ->
+	CreateScenario = 	(fun(Cur_AntState=#antState{location=_L}, _History) ->
 							% io:format("Creating current flow ant at ~w with creatorId ~w~n",[L,CreatorId]),
 							#scenario{antState=Cur_AntState,boundaryCondition=CurrentLocation#location.resource}
 						end),
@@ -225,7 +225,7 @@ execute_scenario(intention, _Type) ->
 		(?undefined) -> ?undefined
 	end;
 execute_scenario(current_flow, _Type) ->
-	fun(Scenario=#scenario{boundaryCondition= PrevResource,antState=#antState{location=Location=#location{resource=Rid},creatorId=Cid}}) ->
+	fun(Scenario=#scenario{boundaryCondition= _PrevResource,antState=#antState{location=_Location=#location{resource=Rid},creatorId=_Cid}}) ->
 		whereis(Rid) == undefined andalso io:format("Rid ~w undefined!~n", [Rid]),
 		Rid ! {proclaim_flow, Scenario, self()},
 		?undefined;

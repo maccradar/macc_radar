@@ -49,7 +49,7 @@
 -define(linkConstraintDelay,4000).
 
 % the sample period, in [ms], for updating the cumulative flows in the blackboards.
--define(blackboardUpdateDelay,50000).
+-define(blackboardUpdateDelay,10000).
 % the evaporation time, in [ms], of pheromones created by ants on the blackboards.
 -define(evaporationTime,60000).
 
@@ -89,8 +89,10 @@ init([LinkState]) ->
 	TTM = (fun(TimeBegin,LB) -> link_model:end_time(TimeBegin,LB) end),
 	STM = (fun(TimeEnd,LB) -> link_model:start_time(TimeEnd,LB) end),
 	FD = fundamental_diagram:init({city,LinkState#linkState.maxAllowedSpeed, LinkState#linkState.numLanes}),
+	Flow= fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
 	M = #models{fd=FD, ttm=TTM, stm=STM},
-	LinkBeing = #linkBeing{state=LinkState,blackboard=#blackboard{bb_b=BB_b,bb_e=BB_e, bb_flow=BB_flow},models=M},
+	NewLinkState = LinkState#linkState{flow=Flow},
+	LinkBeing = #linkBeing{state=NewLinkState,blackboard=#blackboard{bb_b=BB_b,bb_e=BB_e, bb_flow=BB_flow},models=M},
     init_ets_history(atom_to_list(LinkState#linkState.id), self()),
 	{ok, LinkBeing}.
 
@@ -206,18 +208,10 @@ handle_info(sumCumulatives, LB=#linkBeing{state=#linkState{id=Id}, blackboard=BB
 	spawn(
 		fun() ->
 			BB_Flow = BB#blackboard.bb_flow,
-			CF_Flow = BB#blackboard.cf_flow,
 			CFs = get_flow_cfs(BB_Flow),
 			% CFs == [] orelse io:format("Summing CFs for link ~w: ~p~n", [Id, [cumulative_func:cf_to_points(C) || C <- CFs]]),
 			% sum all cumulatives with current CF_Flow?
-			NewCF_Flow = case CF_Flow of
-				?undefined -> cumulative_func:sum(CFs);
-				[] -> cumulative_func:sum(CFs);
-				_ -> cumulative_func:sum([CF_Flow | CFs])
-			end,
-			% NewCF_Flow == [] orelse io:format("New CF_Flow for link ~w: ~w~n", [Id, cumulative_func:cf_to_points(NewCF_Flow)]),
-			% clear blackboard?
-			BB_Flow ! reset,
+			NewCF_Flow = cumulative_func:sum(CFs),
 			NewBB = BB#blackboard{cf_flow=NewCF_Flow},
 			NewLB = LB#linkBeing{blackboard=NewBB},
 			gen_server:cast(Id,{updateBeing, NewLB})
@@ -239,16 +233,16 @@ handle_info({updateBlackboard,bb_b,CF_B_points}, #linkBeing{state=#linkState{id=
 	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_end=BB#blackboard.cf_e,cf_begin=CF_B}),
 	{noreply, NewLB};
 % callback to handle updateBlackboard message. This is the reply from the end blackboard with the new cumulative flow
-handle_info({updateBlackboard,bb_e,CF_E_points}, #linkBeing{state=#linkState{id=ID},blackboard=BB} = LB)->
-	CF_E = cumulative_flow:get_cumulative(CF_E_points),
-	NewCF_E = case {CF_E, BB#blackboard.cf_e} of
-		{?undefined, CF2} -> CF2;
-		{CF1, ?undefined} -> CF1;
-		{CF1, _CF2} -> CF1 % TODO: what do we do here? just replace it?
-	end,
-	NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_e=NewCF_E}},
-	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=BB#blackboard.cf_b,cf_end=NewCF_E}),
-	{noreply, NewLB};
+% handle_info({updateBlackboard,bb_e,CF_E_points}, #linkBeing{state=#linkState{id=ID},blackboard=BB} = LB)->
+	% CF_E = cumulative_flow:get_cumulative(CF_E_points),
+	% NewCF_E = case {CF_E, BB#blackboard.cf_e} of
+		% {?undefined, CF2} -> CF2;
+		% {CF1, ?undefined} -> CF1;
+		% {CF1, _CF2} -> CF1 % TODO: what do we do here? just replace it?
+	% end,
+	% NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_e=NewCF_E}},
+	% ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=BB#blackboard.cf_b,cf_end=NewCF_E}),
+	% {noreply, NewLB};
 % callback to handle propagateFlowDown message. This is periodically called to propagate traffic flow down the link and thereby update the cumulative flows.
 handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboard=BB,models=#models{fd=FD} }) ->
 	spawn(
@@ -260,8 +254,7 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 							 % {noreply, LB};
 				{CF_B, _CF_E}->MaxGrad = fundamental_diagram:c(FD),
 		%%					  CF_B1 =  link_model:accommodate_max_capacity( CF_B, MaxGrad),
-							  SumCF = cumulative_func:sum(CF_B, BB#blackboard.cf_flow),
-							  CF_E1 = link_model:propagate_flow(down,SumCF, LB),
+							  CF_E1 = link_model:propagate_flow(down,CF_B, LB),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=CF_B1,cf_end=CF_E}),
 		%%					  NewLB1 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B1,cf_e=CF_E1}},  
 		%%					  UPContraint = link_model:propagate_flow(up,CF_E1, NewLB1),
@@ -340,9 +333,14 @@ handle_info({get_density, 0, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD}
 	Pid ! {density, Id, {Coordinates,density_to_level_of_service(Density, fundamental_diagram:kjam(FD))}},
 	{noreply, LB};
 handle_info({get_density, Time, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD}, blackboard=#blackboard{cf_b = CF_B, cf_e = CF_E}, state=#linkState{length=L, id=Id, density=_Density, coordinates=Coordinates}}) when L /= 0 ->
-	N = cumulative_flow:nbr_vehicles(util:timestamp(sec,erlang:now())+Time,CF_B,CF_E),
-	D = density_to_level_of_service(N/L,fundamental_diagram:kjam(FD)),
-	Pid ! {density, Id, {Coordinates,D}},
+	Now = util:timestamp(sec,erlang:now()),
+	N = cumulative_flow:nbr_vehicles(Now+Time,CF_B,CF_E),
+	QoS = case L < ?vehicle_length of
+		true ->	density_to_level_of_service(0,fundamental_diagram:kjam(FD));
+		_ -> density_to_level_of_service(N/L,fundamental_diagram:kjam(FD))
+	end,
+	io:format("QoS: ~w. Estimated #vehicles at time ~w on link ~w with CF_B ~w and CF_E ~w: ~w~n", [QoS,Now+Time, Id, CF_B, CF_E, N]),
+	Pid ! {density, Id, {Coordinates,QoS}},
 	{noreply, LB};
 % default callback for messages.
 handle_info(Message, S) ->
@@ -433,12 +431,15 @@ get_traffic_update(LB=#linkBeing{state=L, models=#models{fd=FD}}) ->
 	Capacity = fundamental_diagram:c(FD),
 	ToNode ! {capacityUpdate, LinkState#linkState.id, Capacity},
 	NewLB = LB#linkBeing{state=LinkState},
-	% TODO: use actual traffic updates instead of free flow!!
 	% send current flow ant
-	% LinkState#linkState.avgSpeed == 0 andalso io:format("Link ~w has 0 avgSpeed~n", [LinkState#linkState.id]),
-	TimeToPass = LinkState#linkState.length / LinkState#linkState.maxAllowedSpeed,
+	% TimeToPass = LinkState#linkState.length / LinkState#linkState.maxAllowedSpeed,
+	% Flow= fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
+	TimeToPass = case LinkState#linkState.avgSpeed of
+		0.0 -> LinkState#linkState.length / 0.01;
+		Speed -> LinkState#linkState.length / Speed
+	end,
 	TimeInterval = 300, % 5 minutes of sampling
-	Flow= fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
+	Flow = LinkState#linkState.flow,
 	% io:format("Capacity: ~w, Flow: ~w~n", [Capacity,Flow]),
 	NumberOfVehicles = TimeInterval * Flow,
 	Now = util:timestamp(sec,erlang:now()),

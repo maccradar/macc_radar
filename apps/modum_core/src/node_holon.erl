@@ -66,7 +66,7 @@ init([NodeState]) ->
     %io:format("Initialized node with state {~s,~s}~n", [NodeState#nodeState.id, NodeState#nodeState.desc]),
 	TTM = (fun(TimeBegin) -> TimeBegin end),
 	STM = (fun(TimeEnd) -> TimeEnd end),
-	FD = fundamental_diagram:init(0.015, 0.5, 0.2), 
+	FD = fundamental_diagram:init(0.015, 0.5, 1 / ?vehicle_length), 
 	M = #models{fd=FD, ttm=TTM, stm=STM},
 	NodeBeing = #nodeBeing{state=NodeState#nodeState{capacities=dict:new(), turningFractions=dict:new()},models=M},
 	{ok, NodeBeing}.
@@ -148,7 +148,7 @@ handle_info({subscribe, get_info, Interval, repeat, Receiver}, NB) ->
 handle_info({get_info, Pid},  NB=#nodeBeing{state=#nodeState{id=Id}}) ->
 	Pid ! {info, Id, NB},
 	{noreply, NB};
-handle_info({add_turning_fractions, FromId, Tos}, NB=#nodeBeing{state=NS=#nodeState{turningFractions=TF, connections=Connections}}) ->
+handle_info({add_turning_fractions, FromId, Tos}, NB=#nodeBeing{state=NS=#nodeState{turningFractions=TF, connections=_Connections}}) ->
 	ToFun = fun({ToId, Prob}, AccTF) ->
 		dict:store({FromId,ToId}, Prob, AccTF)
 		end,
@@ -187,11 +187,11 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, #nodeBeing
 			SenderId ! {?reply,explore_upstream, ET};
 		T -> io:format("start time is not calculated correctly ~w~n",[T])
 	end;
-execution({proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antState{location=Location=#location{resource=Rid},creatorId=Cid,data=CF}}, _SenderId}, NB = #nodeBeing{state=#nodeState{connections = Connections, turningFractions=TurningFractionDict}}) ->
+execution({proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antState{location=Location=#location{resource=_Rid},creatorId=Cid,data=CF}}, _SenderId}, _NB = #nodeBeing{state=#nodeState{connections = Connections, turningFractions=TurningFractionDict}}) ->
 	% get turning fractions and multiply them with the given cumulative to obtain new cumulatives to pass to the links
 	CFs = [{To, cumulative_func:multiply(y, dict:fetch({From, To},TurningFractionDict), CF)} || #connection{from = From, to = To} <- Connections, From == Previous, To /= ?link_out],
 	% filter out cumulatives with a largest y value (# vehicles) smaller than or equal to 1
-	NewCFs = lists:filter(fun(X = {_, NewCF}) -> {Y, _} =  cumulative_func:last(y, NewCF), Y > 1 end, CFs),
+	NewCFs = lists:filter(fun({_, NewCF}) -> {Y, _} =  cumulative_func:last(y, NewCF), Y > 1 end, CFs),
 	spawn(
 		fun() ->
 			lists:foreach(fun({Next, NextCF}) -> traffic_ant:create_current_flow_ant(Location, Next, Cid, NextCF) end, NewCFs)
