@@ -186,7 +186,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 terminate(normal, S) ->
     io:format("Vehicle ~s terminated normally~n",[(S#vehicleBeing.state)#vehicleState.id]);
-terminate(shutdown, S) ->
+terminate(shutdown, _S) ->
     ok;% io:format("Vehicle ~s got shutdown~n",[(S#vehicleBeing.state)#vehicleState.id]);
 terminate(Reason, S) ->
     io:format("Vehicle ~s got killed with reason: ~n~w~n", [(S#vehicleBeing.state)#vehicleState.id, Reason]).

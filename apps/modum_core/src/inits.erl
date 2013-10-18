@@ -71,11 +71,10 @@ user_request_server() ->
 	end.
 
 web_server() ->
-	fun(ComState=#comState{ip=Ip, port=Port}) ->
+	fun(#comState{ip=Ip, port=Port}) ->
 		{ok, ProjectDir} = application:get_env(modum_core, project_dir),
 		{ok, EbinDir} = application:get_env(modum_core, ebin_dir),
 		{ok, WwwDir} = application:get_env(modum_core, www_dir),
-		{ok, IncludeDir} = application:get_env(modum_core, include_dir),
 		Root = filename:join([ProjectDir,WwwDir]),
 		Id = "embedded",
 		GconfList = [{enable_soap,true},

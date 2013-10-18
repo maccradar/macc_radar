@@ -30,7 +30,7 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 -module(core_test).
 
--export([test_xmlrpc/5,linkState/1, digraph/0, create_vehicles/4, testShortestPath/1,get_travel_times/1,simulate_traffic/1,test_avg/4, test_yen/1, test_yaws/0, test_detergent_server/0, test_soap/4, test_soap_client/0]).
+-export([test_xmlrpc/5,linkState/1, digraph/0, create_vehicles/4, testShortestPath/1,get_travel_times/1,simulate_traffic/1,simulate_traffic/2,test_avg/4, test_yen/1, test_yaws/0, test_detergent_server/0, test_soap/4, test_soap_client/0]).
 
 -include("states.hrl").
 -include_lib("eunit/include/eunit.hrl").

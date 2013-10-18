@@ -200,7 +200,7 @@ yen(Graph, Source, Sink, K) ->
 			 B = [],
 			 yen_kloop(Graph, A, B, Source, Sink, 2, K+1)
 	end,
-	Sorted = check_paths(Graph,Paths).
+	check_paths(Graph,Paths).
 
 yen_kloop(_,A,_,_,_,K,K) -> A;
 yen_kloop(Graph, A, OldB, Source, Sink, IndexK, K) ->

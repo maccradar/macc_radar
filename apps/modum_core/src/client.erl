@@ -74,7 +74,7 @@ handle_call(_Message, _From, S) ->
     {noreply, S}.
 
 handle_cast({transmit, Payload}, S=#comState{parser=Parser}) ->
-	Result = Parser(Payload, S),
+	Parser(Payload, S),
 	{noreply, S};
 handle_cast(_Message, S) ->
     {noreply, S}.
