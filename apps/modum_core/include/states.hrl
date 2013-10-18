@@ -41,6 +41,12 @@
 -define(optimal_path_server, optimal_path_server).
 -define(traffic_update_server, traffic_update_server).
 -define(traffic_update_client, traffic_update_client).
+-define(vehicle_length, 5.0).
+-define(link_out, out). % defined in xml map as out
+-define(link_in, in). % defined in xml map as in
+-define(node_in, node_in).
+-define(node_out, node_out).
+-define(callTimeout, 10000). % the timeout, in [ms], when waiting for a response from a synchronous call
 
 -record(comState,
 {
@@ -99,7 +105,7 @@
 	origin				=#location{}			::#location{},
 	destination			=#location{}			::#location{},
 	location			=#location{}			::#location{},
-	length				=1.0					::float(),
+	length				=?vehicle_length		::float(),
 	maxSpeed			=120.0					::float(),
 	departureTime		=now					::atom() | float(),
 	arrivalTime			=?undefined				::atom() | float()
@@ -155,6 +161,7 @@
 	maxAllowedSpeed		=0.0					::float(),					% [m/s]
 	co2emissions		=0.0					::float(),
 	density				=0.0					::float(),					% [#cars/m]
+	flow				=0.0					::float(),					% [#cars/s]
 	avgSpeed			=0.0					::float(),					% [m/s]
 	roadType									::string(),
 	coordinates									::list({float(),float()})   % [{lat, lon}]

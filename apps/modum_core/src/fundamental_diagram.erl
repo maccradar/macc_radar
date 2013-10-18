@@ -32,7 +32,7 @@
 %% Created: 18-jan.-2013
 %% Description: TODO: Add description to fundamental_diagram
 -module(fundamental_diagram).
-
+-include("states.hrl").
 -record(k_q,{kc,c,kjam,vf,w}).
 
 -export([init/1,init/3,kc/1,c/1,kjam/1,vf/1,q/2,u/2,w/1]).
@@ -44,18 +44,18 @@ init(Kc,C,Kjam) when ((Kc > 0) and (Kjam > Kc)) ->
 % C = # vehicles / second -> in city 1800 / h -> 0.5 / s
 % Kjam = # vehicles / meter -> avg vehicle length of 5 meters results in Kjam of 0.2
 init({city,MaxSpeed,1}) when MaxSpeed > 0 ->
-	init(0.5/MaxSpeed,0.5,0.2);
+	init(0.5/MaxSpeed,0.5,1 / ?vehicle_length);
 % using default values for C and Kjam
 % C = # vehicles / second -> on highway 2100 / h -> 0.583 / s
 % Kjam = # vehicles / meter -> avg vehicle length of 5 meters results in Kjam of 0.2
 init({highway,MaxSpeed,1}) when MaxSpeed > 0 ->
-	init(0.583/MaxSpeed,0.583,0.2);
+	init(0.583/MaxSpeed,0.583,1 / ?vehicle_length);
 % C = # vehicles / second -> in city 1800 / h / lane -> 0.5 / s / lane
 % Kjam = # vehicles / meter -> avg vehicle length of 5 meters results in Kjam of 0.2 / lane
 init({city, MaxSpeed, NumLanes}) when (MaxSpeed > 0) and (NumLanes > 1) ->
-	init((0.5 * NumLanes)/MaxSpeed,0.5 * NumLanes, 0.2 * NumLanes);	
+	init((0.5 * NumLanes)/MaxSpeed,0.5 * NumLanes, (1 / ?vehicle_length) * NumLanes);	
 init({highway, MaxSpeed, NumLanes}) when (MaxSpeed > 0) and (NumLanes > 1) ->
-	init((0.583 * NumLanes)/MaxSpeed,0.583 * NumLanes, 0.2 * NumLanes).
+	init((0.583 * NumLanes)/MaxSpeed,0.583 * NumLanes, (1 / ?vehicle_length) * NumLanes).
 
 kc(#k_q{kc=Kc})->
 	Kc.
