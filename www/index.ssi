@@ -74,14 +74,11 @@
 
 	function refresh(cb) {
 		if(cb.checked) {
-			refresh_source = new EventSource("/density/?primary=1&trunk=1&time="+estimation_time);
+			refresh_source = new EventSource("/density/?primary=1&trunk=1&secondary=1&tertiary=1&time="+estimation_time);
 			refresh_source.onmessage = function(event) {
 				var d = window.atob(event.data);
 				var routes = eval(d);
-				routeLayer.clearLayers();
-				for(var i=0; i<routes.length;i++) {
-					routeLayer.addLayer(createRoute(routes[i][0],get_color(routes[i][1])));
-				}
+				updateLayers(routes);
 			};
 		}
 		else {
