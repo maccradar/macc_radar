@@ -82,8 +82,10 @@ traffic_update_client() ->
 				io:format("Request: ~p~n", [Request]),
 				case xmlrpc:call(Socket, "/RPC2", {call, request, [{base64, EncCommand}]}, false, 300000) of
 					{ok,{response,[EncResponse]}} ->
-						Response = base64:decode_to_string(EncResponse),
-						{ok, Result, _} = erlsom:scan(Response, Model),
+						% Ignoring traffic updates...
+						% Response = base64:decode_to_string(EncResponse),
+						% {ok, Result, _} = erlsom:scan(Response, Model),
+						Result = #updateResponse{id="random", ok=true, extrastatus="Nothing", map=#mapInformationType{name="Nottingham", version="1", link=generate_random_traffic()}},
 						gen_server:cast(modum_proxy, {traffic_update_response, Result});
 					Error -> 
 						io:format("Error receiving response ~p~n", [Error]),
