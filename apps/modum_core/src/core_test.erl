@@ -114,7 +114,7 @@ current_flow_test() ->
 	Link = '-29157766#0',
 	Next = '252273758',
 	C_F11 = cumulative_func:new(0,0),
-	C_F12 = cumulative_func:add_point(5,10, C_F11),
+	C_F12 = cumulative_func:add_point(5,100, C_F11),
 	traffic_ant:create_current_flow_ant(#location{resource=Link, position=?link_in}, Next, Link, C_F12),
 	ok.
 	

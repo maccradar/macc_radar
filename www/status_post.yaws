@@ -32,8 +32,8 @@
 
 -include_lib("modum_core/include/states.hrl").
  out(A) ->
-	{ok, LV} = postvar(A,"link"),
-	[_, L] = string:tokens(LV, " : "),
+	{ok, L} = postvar(A,"link"),
+	% [_, L] = string:tokens(LV, " : "),
 	%PNG = link_model:cfs_to_png_raw(list_to_atom(L), 400, 300),
 	%IMG = base64:encode_to_string(PNG),
 	P = link_model:cfs_to_points_raw(list_to_atom(L)),
@@ -43,5 +43,5 @@
 	io:format("Points: ~p~n",[Points]),
 	
 	LName = link_holon:get_description(list_to_atom(L)),
-	[{ssi,"modum.ssi", "%",[]},{ssi,"header.ssi", "%", [{"title", "MECA KU Leuven Status Result"}]},{ssi,"status_post.ssi", "%", [{"linkName", LName}, {"link", L}, {"points", Points}]},{ssi,"footer.ssi", "%", []}].
+	[{ssi,"header.ssi", "%", [{"title", "MECA KU Leuven Status Result"}]},{ssi,"modum.ssi", "%",[]},{ssi,"status_post.ssi", "%", [{"linkName", LName}, {"link", L}, {"points", Points}]},{ssi,"footer.ssi", "%", []}].
  </erl>

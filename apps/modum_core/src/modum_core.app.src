@@ -51,7 +51,7 @@
 		 {user_request_port, 9000},
 		 {forecast_port, 9001},
 		 {optimal_path_port, 9002},
-		 {traffic_update_ip, {127,0,0,1}},
+		 {traffic_update_ip, {172,30,4,4}},
 		 {traffic_update_port, 4567},
 		 {user_response_port, 9204},
 		 {user_response_ip, {127,0,0,1}},

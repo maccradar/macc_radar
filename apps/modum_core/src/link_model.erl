@@ -50,8 +50,6 @@ propagate_flow(up,CF,OldState=#linkBeing{models = #models{fd = FD},blackboard = 
 	Xf = line_segment:y_x(Yf, line_segment:get(x1, S), line_segment:get(y1, S), fundamental_diagram:c(FD)),
 	_ContraintUp2 = cumulative_func:add_point(Xf, Yf, ContraintUp1).
 
-
-
 propagate_flow(up,CF_B,CF_E, T,Oldstate = #linkBeing{state = #linkState{length = Length},models = #models{fd = FD} } ) ->
 	Back_Prop_Time = Length/fundamental_diagram:w(FD),
 	CarDiff = Length * fundamental_diagram:kjam(FD),
@@ -100,7 +98,6 @@ get_travel_times(_LB,TT,T,MAXT) when T>MAXT->
 	lists:reverse(TT);
 get_travel_times(LB,TT,T,MAXT)->
 	get_travel_times(LB,[{T,end_time(T, LB)}|TT],T+1,MAXT).
-	
 
 accommodate_max_capacity(CF,G)->
 	FS = cumulative_func:first_segment(CF),
@@ -129,7 +126,6 @@ accommodate_max_capacity(X,CF,LastX_CF,NewCF,G)->
 		?undefined -> NewCF
 	end.				
 
-
 cfs_to_png_raw(Link, Width, Height)->
 	{?reply, being, LB} = gen_server:call(Link, being, ?callTimeout),
 	CF_B = LB#linkBeing.blackboard#blackboard.cf_b,
@@ -146,8 +142,8 @@ cfs_to_points_raw(Link) ->
 	CF_B = LB#linkBeing.blackboard#blackboard.cf_b,
 	CF_E = LB#linkBeing.blackboard#blackboard.cf_e,
 	case {CF_B, CF_E} of
-		{?undefined, ?undefined} -> [{cf_b_undefined,[{0,0}]},{cf_e_undefined,[{0,0}]}];
-		{?undefined, _} -> cumulative_func:cfs_to_points([{cf_b_undefined,void},{cf_e,CF_E}], []);
-		{_, ?undefined} -> cumulative_func:cfs_to_points([{cf_b,CF_B},{cf_e_undefined,void}], []);
+		{?undefined, ?undefined} -> [{cf_b,[]},{cf_e,[]}];
+		{?undefined, _} -> [{cf_b,[]}]++cumulative_func:cfs_to_points([{cf_e,CF_E}], []);
+		{_, ?undefined} -> cumulative_func:cfs_to_points([{cf_b,CF_B}],[])++[{cf_e,[]}];
 		{_, _} -> cumulative_func:cfs_to_points([{cf_b,CF_B},{cf_e,CF_E}], [])
 	end.	

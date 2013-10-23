@@ -86,11 +86,12 @@ handle_info({discard, _YawsPid}, State) ->
     %% nothing to do
     {stop, normal, State};
 handle_info(tick, #state{sock=Socket, link_id=LinkId}=State) ->
-    io:format("Sending updated cfs for ~w~n",[LinkId]),
+    
 	%PNG = link_model:cfs_to_png_raw(LinkId, 400, 300),
 	%IMG = base64:encode_to_string(PNG),
 	P = link_model:cfs_to_points_raw(LinkId),
 	[CF_B,CF_E] = [[[atom_to_list(N) | tuple_to_list(T)]|| T<-X] || {N,X} <- P],
+	io:format("Sending updated cfs for ~w: ~w cf_b points and ~w cf_e points~n",[LinkId,length(CF_B), length(CF_E)]),
 	Points = base64:encode_to_string(lists:flatten(io_lib:format("~p", [CF_B++CF_E]))),
 	Data = yaws_sse:data(Points),
     case yaws_sse:send_events(Socket, Data) of

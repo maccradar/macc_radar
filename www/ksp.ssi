@@ -532,7 +532,7 @@ function addRoute(idlist, streetnames, route_number, length, distance) {
 	form.id="route_form"+route_number;
 	form.name="route_form"+route_number;
 	var header = document.createElement("h4");
-	var headerText = document.createTextNode("Route " + route_number + " (" + length + " / " + distance + "m):");
+	var headerText = document.createTextNode("Route " + route_number + " (" + Math.round(length) + "m)");
 	header.appendChild(headerText);
 	var route = document.createElement("label");
 	var input = document.createElement("input");
@@ -567,6 +567,7 @@ function getstatus (formType, linkType )
 		
 function refresh_intentions() {
 	var cb = document.getElementById("refresh_intentions");
+	var intentionsDiv = document.getElementById('intentions');
 	console.log(cb);
 	if(cb.checked && lastResponse != null) {
 		var odk = [lastResponse['oid'],lastResponse['did'], lastResponse['k']];
@@ -575,17 +576,18 @@ function refresh_intentions() {
 		refresh_source.onmessage = function(event) {
 			var d = window.atob(event.data);
 			var intentions = eval(d);
-			alert(intentions);
+			intentionsDiv.innerHTML = "<h4>Intention distribution:</h4>";
 			for(var i=0; i<intentions.length;i++) {
 				var rNr = i+1;
 				var intPerc = intentions[i]*100;
-				var rText = document.createTextNode("Route " + rNr + ":" + intPerc + "/100");
-				document.getElementById('intentions').appendChild(rText);
+				intentionsDiv.innerHTML += "<p>Route " + rNr + ":" + intPerc.toFixed(2) + "/100</p>";
 			}
 		};
 	}
 	else if(refresh_source != null) {
 		refresh_source.close();
+		intentionsDiv = document.getElementById('intentions');
+		intentionsDiv.innerHTML = "";
 	}
 };
 </script>

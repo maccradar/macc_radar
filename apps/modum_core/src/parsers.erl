@@ -82,10 +82,9 @@ traffic_update_client() ->
 				io:format("Request: ~p~n", [Request]),
 				case xmlrpc:call(Socket, "/RPC2", {call, request, [{base64, EncCommand}]}, false, 300000) of
 					{ok,{response,[EncResponse]}} ->
-						% Ignoring traffic updates...
-						% Response = base64:decode_to_string(EncResponse),
-						% {ok, Result, _} = erlsom:scan(Response, Model),
-						Result = #updateResponse{id="random", ok=true, extrastatus="Nothing", map=#mapInformationType{name="Nottingham", version="1", link=generate_random_traffic()}},
+						Response = base64:decode_to_string(EncResponse),
+						{ok, Result, _} = erlsom:scan(Response, Model),
+						% Result = #updateResponse{id="random", ok=true, extrastatus="Nothing", map=#mapInformationType{name="Nottingham", version="1", link=generate_random_traffic()}},
 						gen_server:cast(modum_proxy, {traffic_update_response, Result});
 					Error -> 
 						io:format("Error receiving response ~p~n", [Error]),
@@ -175,7 +174,7 @@ generate_random_traffic() ->
 		FreeFlow= fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
 		Length = S#linkState.length,
 		Lanes = S#linkState.numLanes,
-		N1 = random:uniform(round(SimulationTime * FreeFlow)), % vehicles which have passed in the last 5 minutes
+		N1 = random:uniform(round(SimulationTime * FreeFlow / 10)), % vehicles which have passed in the last 5 minutes
 		N2 = trunc(min(random:uniform()*N1, (Length*Lanes) / ?vehicle_length)), % vehicles on link, should be less than the amount of vehicles that have passed and also less the the maximum amount of 5m vehicles
 		Density = density(N2, Length),
 		Occupancy = Density * ?vehicle_length,

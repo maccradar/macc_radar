@@ -31,6 +31,7 @@
 		el.value = options[i] + " : " + values[i];
 		l.appendChild(el);
 	} 
+	var dygraphOptions = {drawPoints: true, ylabel: 'cumulative vehicles [#]', xlabel: 'relative time [s]',labels: ["x", "cf_b", "cf_e"]};
 	
 	function status_info() {
 		var messages = document.getElementById("messages");
@@ -46,7 +47,7 @@
 					lastResponse = res[0];
 					var points = convertPoints(lastResponse);
 					console.log(points);
-					var g = new Dygraph(document.getElementById("cfs"),points, {labels: ["x", "cf_b", "cf_e"]});
+					var g = new Dygraph(document.getElementById("cfs"),points, dygraphOptions);
 					header.innerHTML = "<h1>Status info of " + Id[0] +"</h1>"
 					messages.innerHTML = "";
 				}	
@@ -72,7 +73,7 @@
 			refresh_source = new EventSource("/cfs/"+l);
 			refresh_source.onmessage = function(event) {
 				var p = convertEncPoints(event.data);
-				var h = new Dygraph(document.getElementById("cfs"),p, {labels: ["x", "cf_b", "cf_e"]});
+				var h = new Dygraph(document.getElementById("cfs"),p, dygraphOptions);
 				
 			};
 		}
@@ -94,7 +95,7 @@
 				//var img=document.createElement("img");
 				//img.src="data:binary;base64, " + event.data;
 				var div = document.createElement("div");
-				var g = new Dygraph(div,convertEncPoints(event.data), {labels: ["x", "cf_b", "cf_e"]});
+				var g = new Dygraph(div,convertEncPoints(event.data), dygraphOptions);
 				history.appendChild(div);
 			};
 			history.style.display = 'block';

@@ -4,6 +4,10 @@
 	<link rel="stylesheet" href="font-awesome/css/font-awesome.min.css">
 	<link rel="stylesheet" href="awesome-markers/dist/leaflet.awesome-markers.css">
 	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.css" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+    <script src="jquery-contextmenu/jquery.contextMenu.js" type="text/javascript"></script>    
+    <link href="jquery-contextmenu/jquery.contextMenu.css" rel="stylesheet" type="text/css" />
 	<!--[if lte IE 8]>
      <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5/leaflet.ie.css" />
 	<![endif]-->
@@ -17,9 +21,6 @@
 	<script src="js/roadcolors.js"></script>
 	<script src="object_cache/object_cache.min.js"></script>
 	<script src="jsolait/jsolait.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
-    <script src="jquery-contextmenu/jquery.contextMenu.js" type="text/javascript"></script>    
-    <link href="jquery-contextmenu/jquery.contextMenu.css" rel="stylesheet" type="text/css" />
+    
 </head>
 <body>

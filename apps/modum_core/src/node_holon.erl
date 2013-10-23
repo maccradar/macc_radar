@@ -194,7 +194,9 @@ execution({proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antS
 	NewCFs = lists:filter(fun({_, NewCF}) -> {Y, _} =  cumulative_func:last(y, NewCF), Y > 1 end, CFs),
 	spawn(
 		fun() ->
-			lists:foreach(fun({Next, NextCF}) -> traffic_ant:create_current_flow_ant(Location, Next, Cid, NextCF) end, NewCFs)
+			lists:foreach(fun({Next, NextCF}) -> 
+				% io:format("creating current flow ant on ~w for ~w~n", [Next, Cid]),
+				traffic_ant:create_current_flow_ant(Location, Next, Cid, NextCF) end, NewCFs)
 		end
 	).
 	% SenderId ! {?reply, proclaim_flow, NewCFs}.

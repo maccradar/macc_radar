@@ -131,10 +131,10 @@ handle_call({linkUpdate, LinkState=#linkState{id=LinkId}}, _From, S=#proxyState{
 	case dict:find(LinkId, LinkDict) of
 		{ok, #linkInformationType{avgSpeed=AvgSpeed,co2emissions=CO2,density=Density, flow=Flow}} ->
 			NewLinkState = LinkState#linkState{avgSpeed=list_to_float(AvgSpeed), co2emissions=list_to_float(CO2), density=list_to_float(Density), flow=list_to_float(Flow)},
-			%io:format("Recent info found, replying with new state~n"),
+			% io:format("Recent info found, replying with new state~n"),
 			{reply, {?reply, linkUpdate, NewLinkState}, S};
 		error -> % no updates received, so reply with current state
-			%io:format("No recent info found, replying with current state~n"),
+			% io:format("No recent info found, replying with current state~n"),
 			{reply, {?reply, linkUpdate, LinkState}, S}
 	end;
 
@@ -296,8 +296,8 @@ addLinkToGraph(_G,L,[]) ->
 
 updateLinkStates(Dict, []) ->
 	Dict;
-updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=_Density} | Rest]) ->
-	% list_to_float(Density) == 0.0 orelse io:format("new density for link ~w: ~w~n",[list_to_atom(Id),list_to_float(Density)]),
+updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=Density} | Rest]) ->
+    list_to_float(Density) == 0.0 orelse io:format("new density for link ~w: ~w~n",[list_to_atom(Id),list_to_float(Density)]),
 	NewDict = dict:store(list_to_atom(Id), LinkInfo, Dict),
 	% inform link immediately:
 	gen_server:cast(list_to_atom(Id), traffic_update),

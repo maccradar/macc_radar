@@ -225,9 +225,10 @@ execute_scenario(intention, _Type) ->
 		(?undefined) -> ?undefined
 	end;
 execute_scenario(current_flow, _Type) ->
-	fun(Scenario=#scenario{boundaryCondition= _PrevResource,antState=#antState{location=_Location=#location{resource=Rid},creatorId=_Cid}}) ->
+	fun(Scenario=#scenario{boundaryCondition= _PrevResource,antState=#antState{location=Location=#location{resource=Rid},creatorId=_Cid}}) ->
 		whereis(Rid) == undefined andalso io:format("Rid ~w undefined!~n", [Rid]),
 		Rid ! {proclaim_flow, Scenario, self()},
+		% io:format("Killing current flow ant at ~w~n", [Location]),
 		?undefined;
 		% receive
 		% 	{?reply, proclaim_flow, IdCFList} ->

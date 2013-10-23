@@ -46,15 +46,15 @@
 -define(mapUpdateDelay, 300000).
 
 % the sample period, in [ms], for propagating the traffic flow down the link.
--define(linkConstraintDelay,4000).
+-define(linkConstraintDelay,10000).
 
 % the sample period, in [ms], for updating the cumulative flows in the blackboards.
--define(blackboardUpdateDelay,10000).
+-define(blackboardUpdateDelay,20000).
 % the evaporation time, in [ms], of pheromones created by ants on the blackboards.
--define(evaporationTime,60000).
+-define(evaporationTime,30000).
 
 -define(deleteOldHistoryDelay, 30000).
--define(sumCumulativesDelay, 5000).
+-define(sumCumulativesDelay, 15000).
 -define(historyWindow, {0,120,0}).
 
 % start function of the gen_server, the link state representing this link holon has to be provided.
@@ -89,7 +89,7 @@ init([LinkState]) ->
 	TTM = (fun(TimeBegin,LB) -> link_model:end_time(TimeBegin,LB) end),
 	STM = (fun(TimeEnd,LB) -> link_model:start_time(TimeEnd,LB) end),
 	FD = fundamental_diagram:init({city,LinkState#linkState.maxAllowedSpeed, LinkState#linkState.numLanes}),
-	Flow= fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
+	Flow= 0.0,% fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
 	M = #models{fd=FD, ttm=TTM, stm=STM},
 	NewLinkState = LinkState#linkState{flow=Flow},
 	LinkBeing = #linkBeing{state=NewLinkState,blackboard=#blackboard{bb_b=BB_b,bb_e=BB_e, bb_flow=BB_flow},models=M},
@@ -195,6 +195,7 @@ handle_cast(_Message, S) ->
     {noreply, S}.
 % callback to handle updateMap message. This is periodically called to request map updates through the MODUM client.
 handle_info(updateMap, LB) ->
+	% io:format("updating map~n"),
     NewLB = get_traffic_update(LB),
 	{noreply, NewLB};
 handle_info(deleteOldHistory, LB=#linkBeing{state=#linkState{id=Id}}) ->
@@ -210,7 +211,6 @@ handle_info(sumCumulatives, LB=#linkBeing{state=#linkState{id=Id}, blackboard=BB
 			BB_Flow = BB#blackboard.bb_flow,
 			CFs = get_flow_cfs(BB_Flow),
 			% CFs == [] orelse io:format("Summing CFs for link ~w: ~p~n", [Id, [cumulative_func:cf_to_points(C) || C <- CFs]]),
-			% sum all cumulatives with current CF_Flow?
 			NewCF_Flow = cumulative_func:sum(CFs),
 			NewBB = BB#blackboard{cf_flow=NewCF_Flow},
 			NewLB = LB#linkBeing{blackboard=NewBB},
@@ -330,16 +330,18 @@ handle_info({get_info, Pid},  LB=#linkBeing{state=#linkState{id=Id}}) ->
 	Pid ! {info, Id, LB},
 	{noreply, LB};
 handle_info({get_density, 0, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD},state=#linkState{id=Id, density=Density, coordinates=Coordinates}}) ->
+	io:format("Density: ~w QoS: ~w for link ~w~n", [Density, density_to_level_of_service(Density, fundamental_diagram:kjam(FD)), Id]),
+	
 	Pid ! {density, Id, {Coordinates,density_to_level_of_service(Density, fundamental_diagram:kjam(FD))}},
 	{noreply, LB};
 handle_info({get_density, Time, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD}, blackboard=#blackboard{cf_b = CF_B, cf_e = CF_E}, state=#linkState{length=L, id=Id, density=_Density, coordinates=Coordinates}}) when L /= 0 ->
 	Now = util:timestamp(sec,erlang:now()),
-	N = cumulative_flow:nbr_vehicles(Now+Time,CF_B,CF_E),
+	N = cumulative_flow:nbr_vehicles(Time+Now,CF_B,CF_E),
 	QoS = case L < ?vehicle_length of
 		true ->	density_to_level_of_service(0,fundamental_diagram:kjam(FD));
 		_ -> density_to_level_of_service(N/L,fundamental_diagram:kjam(FD))
 	end,
-	io:format("QoS: ~w. Estimated #vehicles at time ~w on link ~w with CF_B ~w and CF_E ~w: ~w~n", [QoS,Now+Time, Id, CF_B, CF_E, N]),
+	io:format("QoS: ~w. #vehicles: ~w at ~w on ~w~n", [QoS,N,Time+Now, Id]),
 	Pid ! {density, Id, {Coordinates,QoS}},
 	{noreply, LB};
 % default callback for messages.
@@ -364,8 +366,6 @@ terminate(Reason, S) ->
 %%%%%%%%%%%%%%%%%%%%%%
 
 density_to_level_of_service(Density, KJam) ->
-	A = (1-Density / KJam),
-	Density == 0 orelse io:format("Density: ~w, KJam: ~w, QoS: ~w~n", [Density, KJam, A]),
 	round(100*(1 - Density / KJam)).
 	
 %% execution of models
@@ -393,19 +393,21 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, LB=#linkBe
 			SenderId ! {?reply,explore_upstream, ET};
 		T -> io:format("start time is not calculated correctly ~w~n",[T])
 	end;
-execution({proclaim_flow, #scenario{antState=#antState{creatorId=Id, data=CF}}, SenderId}, LB=#linkBeing{blackboard=#blackboard{bb_flow=BB},state=#linkState{connection = Connection}}) ->
-	% check if blackboard already has already an entry from the same creatorId
-	% P = get_flow_pheromone(BB, Id),
-	% if pheromone is found, evaporate it -- don't replace it
-	% is_pid(P) andalso (P ! evaporate),
+execution({proclaim_flow, #scenario{antState=#antState{location=Location, creatorId=Id, data=CF}}, SenderId}, LB=#linkBeing{blackboard=#blackboard{bb_flow=BB},state=#linkState{id=LinkId,connection = Connection}}) ->
 	% add new {linkId, cumulative function} tuple to blackboard
-	% io:format("Adding pheromone ~p for link ~w~n", [cumulative_func:cfs_to_points([{Id,CF}],[]), LinkId]),
+    % io:format("Adding pheromone ~p for link ~w~n", [cumulative_func:cfs_to_points([{Id,CF}],[]), LinkId]),
 	pheromone:create([BB], ?evaporationTime, #info{data={Id, CF}, tags=[flow]}),
 	% propagate flow down 
 	NewCF = link_model:propagate_flow(down,CF, LB),
 	% io:format("New CF in link ~w: ~w~n", [LinkId,{Connection#connection.to, cumulative_func:cfs_to_points([{LinkId, NewCF}],[])}]),
 	% send new cumulative function back to current flow ant
-	SenderId ! {?reply, proclaim_flow, [{Connection#connection.to, NewCF}]}.
+	% io:format("creating current flow ant on ~w for ~w~n", [Connection#connection.to, Id]),
+	spawn(
+		fun() ->
+			traffic_ant:create_current_flow_ant(Location, Connection#connection.to, Id, NewCF)
+		end
+	).
+	% SenderId ! {?reply, proclaim_flow, [{Connection#connection.to, NewCF}]}.
 
 get_flow_cfs(Blackboard) ->
 	Blackboard ! {get,{'_',{'_', '$1'},'_'},self()},
@@ -413,7 +415,7 @@ get_flow_cfs(Blackboard) ->
 		{result_get,[]}->[];
 		{result_get,CFs} -> lists:flatten(CFs);
 		M -> io:format("Received unknown message expected flow result: ~w~n", [M])
-		after 10000-> io:format("Waiting too long for flow response...~n"), []
+	after 5000-> io:format("Waiting too long for flow response...~n"), []
 	end.
 get_flow_pheromone(Blackboard, Id) ->
 	Blackboard ! {get,{'$1',{Id, '_'},'_'},self()},
@@ -440,9 +442,10 @@ get_traffic_update(LB=#linkBeing{state=L, models=#models{fd=FD}}) ->
 	end,
 	TimeInterval = 300, % 5 minutes of sampling
 	Flow = LinkState#linkState.flow,
+	io:format("Flow: ~w, density: ~w for link ~w~n", [Flow, LinkState#linkState.density, LinkState#linkState.id]),
 	% io:format("Capacity: ~w, Flow: ~w~n", [Capacity,Flow]),
-	NumberOfVehicles = TimeInterval * Flow,
+	NumberOfVehicles = round(TimeInterval * Flow),
 	Now = util:timestamp(sec,erlang:now()),
 	CumulativeFunction = cumulative_func:add_point(TimeToPass+Now,NumberOfVehicles,cumulative_func:new(Now,0)),
-	traffic_ant:create_current_flow_ant(#location{resource=LinkState#linkState.id}, ToNode, LinkState#linkState.id, CumulativeFunction),
+	NumberOfVehicles > 0 andalso traffic_ant:create_current_flow_ant(#location{resource=LinkState#linkState.id}, ToNode, LinkState#linkState.id, CumulativeFunction),
 	NewLB.

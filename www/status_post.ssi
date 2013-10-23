@@ -7,6 +7,7 @@
  //Server side events for status updates
     var refresh_source = "";
 	var history_source = "";
+	var dygraphOptions = {drawPoints: true, ylabel: 'cumulative vehicles [#]', xlabel: 'relative time [s]',labels: ["x", "cf_b", "cf_e"]};
 	
 	function refresh(cb) {
 		if(cb.checked) {
@@ -14,7 +15,7 @@
 			refresh_source = new EventSource("/cfs/"+l);
 			refresh_source.onmessage = function(event) {
 				var p = convertPoints(event.data);
-				var h = new Dygraph(document.getElementById("cfs"),p, {labels: ["x", "cf_b", "cf_e"]});
+				var h = new Dygraph(document.getElementById("cfs"),p, dygraphOptions);
 				
 			};
 		}
@@ -36,7 +37,7 @@
 				//var img=document.createElement("img");
 				//img.src="data:binary;base64, " + event.data;
 				var div = document.createElement("div");
-				var g = new Dygraph(div,convertPoints(event.data), {labels: ["x", "cf_b", "cf_e"]});
+				var g = new Dygraph(div,convertPoints(event.data), dygraphOptions);
 				history.appendChild(div);
 			};
 			history.style.display = 'block';
@@ -48,19 +49,19 @@
 	};
 	
 	var points = convertPoints('%points%');
-	
-	var g = new Dygraph(document.getElementById("cfs"),points, {labels: ["x", "cf_b", "cf_e"]});
+	var g = new Dygraph(document.getElementById("cfs"),points, dygraphOptions);
 	
 	function convertPoints(encpoints) {
 		var p = window.atob(encpoints);
 		var points = eval(p);
+		console.log(points);
 		for(var i = 0; i<points.length; i++) {
 			if(points[i][0] == "cf_b") {
-				points[i][0] = points[i][1];
+				points[i][0] = points[i][1]-(new Date() / 1000);
 				points[i][1] = points[i][2];
 				points[i][2] = null;
 			} else if(points[i][0] == "cf_e") {
-				points[i][0] = points[i][1];
+				points[i][0] = points[i][1]-(new Date() / 1000);
 				points[i][1] = null;
 			}
 		}

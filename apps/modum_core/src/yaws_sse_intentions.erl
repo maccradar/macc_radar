@@ -30,7 +30,7 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 -module(yaws_sse_intentions).
 -behaviour(gen_server).
-
+-include("states.hrl").
 -include_lib("yaws/include/yaws_api.hrl").
 
 %% API
@@ -72,7 +72,7 @@ init([Arg]) ->
 	ODK = base64:decode_to_string(Arg#arg.appmoddata),
 	[O,D,K] = string:tokens(ODK,","),
 	P = modum_proxy:get_k_shortest_path(list_to_atom(O),list_to_atom(D),list_to_integer(K)),
-	io:format("paths: ~p~n", [P]),
+	% io:format("paths: ~p~n", [P]),
 	{ok, #state{sock=Arg#arg.clisock, paths=P}}.
 
 handle_call(_Request, _From, State) ->
@@ -82,15 +82,19 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info({ok, YawsPid}, State) ->
-    {ok, Timer} = timer:send_after(1, self(), tick),
-	% {ok, Timer} = timer:send_interval(300000, self(), tick), % send history update every five minutes
+    % {ok, Timer} = timer:send_after(1, self(), tick),
+	{ok, Timer} = timer:send_interval(10000, self(), tick), % send intention updates
     {noreply, State#state{yaws_pid=YawsPid, timer=Timer}};
 handle_info({discard, _YawsPid}, State) ->
     %% nothing to do
     {stop, normal, State};
 handle_info(tick, #state{sock=Socket, paths=Paths}=State) ->
-	Intentions = [0.40, 0.35, 0.25],
-	P = base64:encode_to_string(lists:flatten(io_lib:format("~p",[Intentions]))),
+Ints = [gen_server:call(Child, currentIntentionPath, ?callTimeout) || {_, Child,_,_} <- supervisor:which_children(vehicle_holon_sv)],
+	I = case Ints of
+	 [] -> [0.0 || _X <- Paths];
+	 Intentions -> [length([Y || Y <- Intentions, Y == X]) / length(Intentions) || {_,X} <- Paths]
+	end,
+	P = base64:encode_to_string(lists:flatten(io_lib:format("~p",[I]))),
 	Data = yaws_sse:data(P),
 	case yaws_sse:send_events(Socket, Data) of
         ok ->

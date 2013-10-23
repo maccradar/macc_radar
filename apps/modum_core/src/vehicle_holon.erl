@@ -73,6 +73,12 @@ set_mode(?auto_once) ->
 
 handle_call(stop, _From, S=#vehicleBeing{}) ->
     {stop, normal, ok, S};
+handle_call(currentIntentionPath, _From, S=#vehicleBeing{currentIntention=CI}) ->
+	P = case CI of
+		?undefined -> [];
+		CI -> [_| Path] = [R || {#antState{location=#location{resource=R}},_} <- CI], Path
+	end,
+	{reply, P, S};
 handle_call(_Message, _From, S) ->
     {noreply, S}.
 

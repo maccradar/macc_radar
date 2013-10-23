@@ -87,7 +87,7 @@
 	};
 			var estimation_time = 0;
 	function updateTime(timeValue) {
-		var roads = ["trunk","primary","secondary","tertiary"];
+		var roads = ["trunk","primary","secondary","tertiary","service"];
 		var request = {time: timeValue, roads: roads};
 		var title = timeValue / 60;
 		if(title == 0) 
