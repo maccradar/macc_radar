@@ -71,7 +71,6 @@ start_time(TE,CF_B,CF_E)->
 nbr_vehicles(_TimeBegin, CF_B, CF_E) when (CF_B == ?undefined) or (CF_E == ?undefined) ->
 	0;
 nbr_vehicles(TimeBegin,CF_B,CF_E)->
-	% io:format("TimeBegin: ~w, CF_B: ~p, CF_E: ~p~n",[TimeBegin,cumulative_func:cf_to_points(CF_B),cumulative_func:cf_to_points(CF_E)]),
 	cumulative_func:x_y(TimeBegin, CF_B)-cumulative_func:x_y(TimeBegin, CF_E).
 
 filter_cumulative(CF,Delta)->

@@ -78,9 +78,12 @@ loop(Table)->
 			D = element(2,P),
 			From ! {?reply,getData,D},
 			loop(Table);
-		{get,Pattern,From}->Pheromones = ets:match(Table, Pattern),
-							From!{result_get,Pheromones},
-							loop(Table);
+		{get,Pattern,From}->
+			spawn(fun() -> 
+				Pheromones = ets:match(Table, Pattern),
+				From!{result_get,Pheromones}
+			end),
+			loop(Table);
 		reset-> ets:delete_all_objects(Table),
 				loop(Table);
 		_ -> loop(Table)

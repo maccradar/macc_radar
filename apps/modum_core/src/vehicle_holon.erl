@@ -37,11 +37,11 @@
 -include("states.hrl").
 -include_lib("blackboard/include/blackboard_records.hrl").
 % sample period to create intention ants.
--define(createIntentionDelay, 20000).
--define(createExplorerDelay, 5000).
--define(solutionEvaporation, 6000).
--define(intentionEvaporation, 300000).
--define(selectIntentionDelay, 15000).
+-define(createIntentionDelay, 100000).
+-define(createExplorerDelay, 25000).
+-define(solutionEvaporation, 30000).
+-define(intentionEvaporation, 120000).
+-define(selectIntentionDelay, 75000).
 -define(changeIntentionThreshold,0.75).
 
 start_link(VehicleState=#vehicleState{id=Id}, Mode, K) when is_atom(Id) ->

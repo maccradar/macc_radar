@@ -297,7 +297,7 @@ addLinkToGraph(_G,L,[]) ->
 updateLinkStates(Dict, []) ->
 	Dict;
 updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=Density} | Rest]) ->
-    list_to_float(Density) == 0.0 orelse io:format("new density for link ~w: ~w~n",[list_to_atom(Id),list_to_float(Density)]),
+    % list_to_float(Density) == 0.0 orelse io:format("new density for link ~w: ~w~n",[list_to_atom(Id),list_to_float(Density)]),
 	NewDict = dict:store(list_to_atom(Id), LinkInfo, Dict),
 	% inform link immediately:
 	gen_server:cast(list_to_atom(Id), traffic_update),

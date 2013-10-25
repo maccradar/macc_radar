@@ -30,7 +30,7 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 -module(util).
 
--export([timestamp/2]).
+-export([timestamp/2, log/4]).
 timestamp(musec,{Mega, Secs, Micro}) ->
     Mega*1000*1000*1000*1000 + Secs * 1000 * 1000 + Micro;
 	
@@ -39,3 +39,9 @@ timestamp(sec, {Mega, Secs, Micro}) ->
 	
 timestamp(tuple, Seconds) ->
 	{Seconds div 1000000, Seconds rem 1000000, 0}.
+	
+log(LogType, Id, Message, Params) ->
+	{ok, Logging} = application:get_env(util,{log,LogType}),
+	String = "[~w | ~w:~w:~w | ~w]: " ++ Message ++ "~n",
+	{_,{H,M,S}} = calendar:now_to_local_time(erlang:now()),
+	Logging == yes andalso io:format(String, [LogType,H,M,S,Id]++Params).

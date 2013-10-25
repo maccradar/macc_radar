@@ -174,7 +174,7 @@ generate_random_traffic() ->
 		FreeFlow= fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
 		Length = S#linkState.length,
 		Lanes = S#linkState.numLanes,
-		N1 = random:uniform(round(SimulationTime * FreeFlow / 10)), % vehicles which have passed in the last 5 minutes
+		N1 = random:uniform(round(SimulationTime * FreeFlow)), % vehicles which have passed in the last 5 minutes
 		N2 = trunc(min(random:uniform()*N1, (Length*Lanes) / ?vehicle_length)), % vehicles on link, should be less than the amount of vehicles that have passed and also less the the maximum amount of 5m vehicles
 		Density = density(N2, Length),
 		Occupancy = Density * ?vehicle_length,

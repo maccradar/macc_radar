@@ -38,7 +38,6 @@
 -include("states.hrl").
 -include_lib("util/include/debug.hrl").
 
-
 propagate_flow(down,CF,OldState)->
 	{T,_} = cumulative_func:first(x,CF),
 	propagate_flow(down,CF, ?undefined, T, OldState);

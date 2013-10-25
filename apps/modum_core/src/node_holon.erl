@@ -191,7 +191,7 @@ execution({proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antS
 	% get turning fractions and multiply them with the given cumulative to obtain new cumulatives to pass to the links
 	CFs = [{To, cumulative_func:multiply(y, dict:fetch({From, To},TurningFractionDict), CF)} || #connection{from = From, to = To} <- Connections, From == Previous, To /= ?link_out],
 	% filter out cumulatives with a largest y value (# vehicles) smaller than or equal to 1
-	NewCFs = lists:filter(fun({_, NewCF}) -> {Y, _} =  cumulative_func:last(y, NewCF), Y > 1 end, CFs),
+	NewCFs = lists:filter(fun({_, NewCF}) -> {Y, _} =  cumulative_func:last(y, NewCF), Y > 10 end, CFs),
 	spawn(
 		fun() ->
 			lists:foreach(fun({Next, NextCF}) -> 

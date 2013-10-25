@@ -46,15 +46,15 @@
 -define(mapUpdateDelay, 300000).
 
 % the sample period, in [ms], for propagating the traffic flow down the link.
--define(linkConstraintDelay,10000).
+-define(linkConstraintDelay,6000).
 
 % the sample period, in [ms], for updating the cumulative flows in the blackboards.
--define(blackboardUpdateDelay,20000).
+-define(blackboardUpdateDelay,12000).
 % the evaporation time, in [ms], of pheromones created by ants on the blackboards.
--define(evaporationTime,30000).
+-define(evaporationTime,18000).
 
 -define(deleteOldHistoryDelay, 30000).
--define(sumCumulativesDelay, 15000).
+-define(sumCumulativesDelay, 9000).
 -define(historyWindow, {0,120,0}).
 
 % start function of the gen_server, the link state representing this link holon has to be provided.
@@ -63,7 +63,7 @@ start_link(LinkState=#linkState{id=Id}) when is_atom(Id) ->
 
 % access function to stop the link holon.
 stop(Id) when is_atom(Id) ->
-	io:format("stop is called"),
+	util:log(info,{link, Id}, "stop is called", []),
 	gen_server:call(Id, stop, ?callTimeout).
 
 % initialisation of the link holon, based on its link state.
@@ -76,7 +76,7 @@ init([LinkState]) ->
     %% To know when the parent shuts down
 	?CREATE_DEBUG_TABLE,
     process_flag(trap_exit, true),
-    %io:format("Initialized link with state {~w,~w,~w}~n", [LinkState#linkState.id, LinkState#linkState.numLanes, LinkState#linkState.length]),
+    % util:log(info, {link, LinkState#linkState.id}, "Initialized with ~w #lanes and length ~w}~n", [LinkState#linkState.numLanes, LinkState#linkState.length]),
  	timer:send_interval(?mapUpdateDelay, updateMap),
  	timer:send_interval(?blackboardUpdateDelay, updateBlackboard),
     timer:send_interval(?linkConstraintDelay, propagateFlowDown),
@@ -161,7 +161,7 @@ get_state(Id) ->
 	Info.
 % callback for synchronous call to stop the link holon.
 handle_call(stop, From, S) when is_record(S, linkBeing)->
-	io:format("handle call : stop from ~w ~n ",[From]),
+	util:log(info,{link,(S#linkBeing.state)#linkState.id}, "handle call: stop from ~w",[From]),
     {stop, normal, From, S};
 % callback for synchronous call to request the link state.
 handle_call(state, _From, LB=#linkBeing{state=S}) ->
@@ -182,7 +182,7 @@ handle_call({travel_time, Times}, _From, LB=#linkBeing{blackboard=#blackboard{cf
 	{reply, TravelTimes, LB};
 % default callback for synchronous calls.
 handle_call(_Message, From, S) ->
-	io:format("handle call from ~w ~n ",[From]),
+	util:log(error,{link, (S#linkBeing.state)#linkState.id}, "handle call from ~w",[From]),
     {noreply, S}.
 handle_cast(traffic_update, LB) ->
 	NewLB = get_traffic_update(LB),
@@ -191,18 +191,16 @@ handle_cast({updateBeing,B}, _LB) ->
 	{noreply, B};
 % default callback for asynchronous casts.
 handle_cast(_Message, S) ->
-	io:format("handle cast: state =  ~w ~n ",[S]),
+	util:log(error,{link, (S#linkBeing.state)#linkState.id}, "handle cast: state =  ~w",[S]),
     {noreply, S}.
 % callback to handle updateMap message. This is periodically called to request map updates through the MODUM client.
 handle_info(updateMap, LB) ->
-	% io:format("updating map~n"),
     NewLB = get_traffic_update(LB),
 	{noreply, NewLB};
 handle_info(deleteOldHistory, LB=#linkBeing{state=#linkState{id=Id}}) ->
 	Now = util:timestamp(sec,erlang:now()),
 	Window = util:timestamp(sec,?historyWindow),
 	_Nbr = ets:select_delete(list_to_atom("history_"++atom_to_list(Id)), ets:fun2ms(fun(#history_item{time=Time}) when Time < Now-Window -> true end)),
-	% io:format("Removed ~w items",[Nbr]);
 	{noreply, LB};
 
 handle_info(sumCumulatives, LB=#linkBeing{state=#linkState{id=Id}, blackboard=BB}) ->
@@ -210,8 +208,9 @@ handle_info(sumCumulatives, LB=#linkBeing{state=#linkState{id=Id}, blackboard=BB
 		fun() ->
 			BB_Flow = BB#blackboard.bb_flow,
 			CFs = get_flow_cfs(BB_Flow),
-			% CFs == [] orelse io:format("Summing CFs for link ~w: ~p~n", [Id, [cumulative_func:cf_to_points(C) || C <- CFs]]),
+			CFs == [] orelse util:log(info,{link, Id},"Summing CFs: ~w", [[cumulative_func:cf_to_points(C) || C <- CFs]]),
 			NewCF_Flow = cumulative_func:sum(CFs),
+			NewCF_Flow == [] orelse util:log(info,{link, Id}, "New CF_Flow: ~w", [cumulative_func:cf_to_points(NewCF_Flow)]),
 			NewBB = BB#blackboard{cf_flow=NewCF_Flow},
 			NewLB = LB#linkBeing{blackboard=NewBB},
 			gen_server:cast(Id,{updateBeing, NewLB})
@@ -226,9 +225,11 @@ handle_info(updateBlackboard, #linkBeing{blackboard=BB} = LB)->
 	{noreply, LB};
 
 % callback to handle updateBlackboard message. This is the reply from the begin blackboard with the new cumulative flow
-handle_info({updateBlackboard,bb_b,CF_B_points}, #linkBeing{state=#linkState{id=ID},blackboard=BB} = LB)->
+handle_info({updateBlackboard,bb_b,CF_B_points}, #linkBeing{state=#linkState{id=ID},blackboard=BB=#blackboard{cf_flow=CF_Flow}} = LB)->
 	CF_B = cumulative_flow:get_cumulative(CF_B_points),
-	SumCF = cumulative_func:sum(CF_B, BB#blackboard.cf_flow),
+	CF_Flow == [] orelse util:log(info,{link, ID}, "Summing CF_B ~w and CF_Flow ~w", [CF_B, cumulative_func:cf_to_points(CF_Flow)]),
+	SumCF = cumulative_func:sum(CF_B, CF_Flow),
+	SumCF == ?undefined orelse util:log(info,{link, ID}, "New CF_B: ~w", [cumulative_func:cf_to_points(SumCF)]),
 	NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_b=SumCF}},
 	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_end=BB#blackboard.cf_e,cf_begin=CF_B}),
 	{noreply, NewLB};
@@ -262,6 +263,7 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 		%%					  NewCF_B = cumulative_flow:constrain_cf(CF_B1, UPContraint),
 							  CF_E2 = link_model:accommodate_max_capacity(CF_E1, MaxGrad),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=CF_B1,cf_end=NewCF_B}),
+							  util:log(info,{link, ID}, "New CF_E: ~w", [cumulative_func:cf_to_points(CF_E2)]),
 							  NewLB2 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B,cf_e=CF_E2}},
 		%%					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=NewCF_B,cf_end=CF_E}),
 							  ID ! {updateBeing, NewLB2}
@@ -309,7 +311,7 @@ handle_info({upstream_point, Pid}, LB = #linkBeing{state=#linkState{shape=Shape}
 	Pid ! {?reply, upstream_point, First},
 	{noreply, LB};
 handle_info({'EXIT', _Pid, Reason}, State) ->
-	io:format("Exit received with reason ~p~n", Reason),
+	util:log(error,{link,(State#linkBeing.state)#linkState.id}, "Exit received with reason ~p", Reason),
     {stop, normal, Reason, State};
 % callback to handle scenario message. This is used to request the execution of a scenario on the link holon.
 % input: {ExecutionType, Scenario, SenderId}
@@ -330,7 +332,7 @@ handle_info({get_info, Pid},  LB=#linkBeing{state=#linkState{id=Id}}) ->
 	Pid ! {info, Id, LB},
 	{noreply, LB};
 handle_info({get_density, 0, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD},state=#linkState{id=Id, density=Density, coordinates=Coordinates}}) ->
-	io:format("Density: ~w QoS: ~w for link ~w~n", [Density, density_to_level_of_service(Density, fundamental_diagram:kjam(FD)), Id]),
+	util:log(info,{link,Id},"Density: ~w QoS: ~w", [Density, density_to_level_of_service(Density, fundamental_diagram:kjam(FD))]),
 	
 	Pid ! {density, Id, {Coordinates,density_to_level_of_service(Density, fundamental_diagram:kjam(FD))}},
 	{noreply, LB};
@@ -341,12 +343,12 @@ handle_info({get_density, Time, discrete, Pid}, LB=#linkBeing{models=#models{fd=
 		true ->	density_to_level_of_service(0,fundamental_diagram:kjam(FD));
 		_ -> density_to_level_of_service(N/L,fundamental_diagram:kjam(FD))
 	end,
-	io:format("QoS: ~w. #vehicles: ~w at ~w on ~w~n", [QoS,N,Time+Now, Id]),
+	((QoS < 0) or (N < 0)) andalso util:log(error,{link,Id},"QoS: ~w. #vehicles: ~w at ~w, CF_B: ~w, CF_E: ~w",[QoS,N,Time+Now, cumulative_func:cf_to_points(CF_B),cumulative_func:cf_to_points(CF_E)]),
 	Pid ! {density, Id, {Coordinates,QoS}},
 	{noreply, LB};
 % default callback for messages.
 handle_info(Message, S) ->
-	io:format("Unknown message received: ~w.~n", [Message]),
+	util:log(error,{link, (S#linkBeing.state)#linkState.id}, "Unknown message received: ~w", [Message]),
     {noreply, S}.
 
 % default code_change callback.
@@ -355,11 +357,11 @@ code_change(_OldVsn, State, _Extra) ->
 
 % default terminate callbacks.
 terminate(normal, S) ->
-    io:format("Link ~s terminated normally~n",[(S#linkBeing.state)#linkState.id]);
+    util:log({link, (S#linkBeing.state)#linkState.id}, "Normal termination~n",[]);
 terminate(shutdown, S) ->
-    io:format("Link ~s got shutdown~n",[(S#linkBeing.state)#linkState.id]);
+    util:log({link, (S#linkBeing.state)#linkState.id}, "Shutdown termination", []);
 terminate(Reason, S) ->
-    io:format("Link ~s got killed with reason ~p~n", [(S#linkBeing.state)#linkState.id,Reason]).
+    util:log({link, (S#linkBeing.state)#linkState.id}, "Killed with reason ~p", [Reason]).
 
 %%%%%%%%%%%%%%%%%%%%%%
 % Internal Functions %
@@ -395,7 +397,7 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, LB=#linkBe
 	end;
 execution({proclaim_flow, #scenario{antState=#antState{location=Location, creatorId=Id, data=CF}}, SenderId}, LB=#linkBeing{blackboard=#blackboard{bb_flow=BB},state=#linkState{id=LinkId,connection = Connection}}) ->
 	% add new {linkId, cumulative function} tuple to blackboard
-    % io:format("Adding pheromone ~p for link ~w~n", [cumulative_func:cfs_to_points([{Id,CF}],[]), LinkId]),
+    % util:log({link, LinkId}, "Adding pheromone ~w", [cumulative_func:cf_to_points(CF)]),
 	pheromone:create([BB], ?evaporationTime, #info{data={Id, CF}, tags=[flow]}),
 	% propagate flow down 
 	NewCF = link_model:propagate_flow(down,CF, LB),
@@ -442,7 +444,7 @@ get_traffic_update(LB=#linkBeing{state=L, models=#models{fd=FD}}) ->
 	end,
 	TimeInterval = 300, % 5 minutes of sampling
 	Flow = LinkState#linkState.flow,
-	io:format("Flow: ~w, density: ~w for link ~w~n", [Flow, LinkState#linkState.density, LinkState#linkState.id]),
+	% io:format("Flow: ~w, density: ~w for link ~w~n", [Flow, LinkState#linkState.density, LinkState#linkState.id]),
 	% io:format("Capacity: ~w, Flow: ~w~n", [Capacity,Flow]),
 	NumberOfVehicles = round(TimeInterval * Flow),
 	Now = util:timestamp(sec,erlang:now()),
