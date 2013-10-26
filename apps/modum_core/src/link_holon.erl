@@ -208,9 +208,9 @@ handle_info(sumCumulatives, LB=#linkBeing{state=#linkState{id=Id}, blackboard=BB
 		fun() ->
 			BB_Flow = BB#blackboard.bb_flow,
 			CFs = get_flow_cfs(BB_Flow),
-			CFs == [] orelse util:log(info,{link, Id},"Summing CFs: ~w", [[cumulative_func:cf_to_points(C) || C <- CFs]]),
+			CFs == [] orelse util:log(debug,{link, Id},"Summing CFs: ~w", [[cumulative_func:cf_to_points(C) || C <- CFs]]),
 			NewCF_Flow = cumulative_func:sum(CFs),
-			NewCF_Flow == [] orelse util:log(info,{link, Id}, "New CF_Flow: ~w", [cumulative_func:cf_to_points(NewCF_Flow)]),
+			NewCF_Flow == [] orelse util:log(debug,{link, Id}, "New CF_Flow: ~w", [cumulative_func:cf_to_points(NewCF_Flow)]),
 			NewBB = BB#blackboard{cf_flow=NewCF_Flow},
 			NewLB = LB#linkBeing{blackboard=NewBB},
 			gen_server:cast(Id,{updateBeing, NewLB})
@@ -227,9 +227,9 @@ handle_info(updateBlackboard, #linkBeing{blackboard=BB} = LB)->
 % callback to handle updateBlackboard message. This is the reply from the begin blackboard with the new cumulative flow
 handle_info({updateBlackboard,bb_b,CF_B_points}, #linkBeing{state=#linkState{id=ID},blackboard=BB=#blackboard{cf_flow=CF_Flow}} = LB)->
 	CF_B = cumulative_flow:get_cumulative(CF_B_points),
-	CF_Flow == [] orelse util:log(info,{link, ID}, "Summing CF_B ~w and CF_Flow ~w", [CF_B, cumulative_func:cf_to_points(CF_Flow)]),
+	CF_Flow == [] orelse util:log(debug,{link, ID}, "Summing CF_B ~w and CF_Flow ~w", [CF_B, cumulative_func:cf_to_points(CF_Flow)]),
 	SumCF = cumulative_func:sum(CF_B, CF_Flow),
-	SumCF == ?undefined orelse util:log(info,{link, ID}, "New CF_B: ~w", [cumulative_func:cf_to_points(SumCF)]),
+	SumCF == ?undefined orelse util:log(debug,{link, ID}, "New CF_B: ~w", [cumulative_func:cf_to_points(SumCF)]),
 	NewLB = LB#linkBeing{blackboard=BB#blackboard{cf_b=SumCF}},
 	ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_end=BB#blackboard.cf_e,cf_begin=CF_B}),
 	{noreply, NewLB};
@@ -263,7 +263,7 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 		%%					  NewCF_B = cumulative_flow:constrain_cf(CF_B1, UPContraint),
 							  CF_E2 = link_model:accommodate_max_capacity(CF_E1, MaxGrad),
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=CF_B1,cf_end=NewCF_B}),
-							  util:log(info,{link, ID}, "New CF_E: ~w", [cumulative_func:cf_to_points(CF_E2)]),
+							  util:log(debug,{link, ID}, "New CF_E: ~w", [cumulative_func:cf_to_points(CF_E2)]),
 							  NewLB2 = LB#linkBeing{blackboard=BB#blackboard{cf_b=CF_B,cf_e=CF_E2}},
 		%%					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=NewCF_B,cf_end=CF_E}),
 							  ID ! {updateBeing, NewLB2}
