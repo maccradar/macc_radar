@@ -262,7 +262,7 @@ handle_info(propagateFlowDown, LB =  #linkBeing{state=#linkState{id=ID},blackboa
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=CF_B1,cf_end=UPContraint}),
 		%%					  NewCF_B = cumulative_flow:constrain_cf(CF_B1, UPContraint),
 							  CF_E2 = case link_model:accommodate_max_capacity(CF_E1, MaxGrad) of
-								illegal_state -> util:log(error,{link, ID}, "Illegal state in accommodate max capacity for ~w, ~w", [CF_E1, MaxGrad]), CF_E1;
+								illegal_state -> util:log(error,{link, ID}, "Illegal state in accommodate max capacity for ~w, ~w", [cumulative_func:cf_to_points(CF_E1), MaxGrad]), CF_E1;
 								NewCF_E -> NewCF_E
 							  end,
 		%% 					  ets:insert(list_to_atom("history_"++atom_to_list(ID)), #history_item{time=util:timestamp(sec,erlang:now()),cf_begin=CF_B1,cf_end=NewCF_B}),
