@@ -177,8 +177,13 @@ handle_call({travel_time, Times}, _From, LB=#linkBeing{state=#linkState{length=L
 handle_call({travel_time, Times}, _From, LB=#linkBeing{state=#linkState{length=L, maxAllowedSpeed=S}, blackboard=#blackboard{cf_b=_CF_B, cf_e=?undefined}}) ->
 	TravelTimes = [{T, 1+trunc(L / S)} || T <- Times],
 	{reply, TravelTimes, LB};
-handle_call({travel_time, Times}, _From, LB=#linkBeing{blackboard=#blackboard{cf_b=CF_B, cf_e=CF_E}}) when is_list(Times) ->
-	TravelTimes = lists:map(fun(Time) -> {Time, 1+trunc(cumulative_flow:end_time(util:timestamp(sec,erlang:now())+Time,CF_B,CF_E))} end, Times),
+handle_call({travel_time, Times}, _From, LB=#linkBeing{state=#linkState{length=L, maxAllowedSpeed=S}, blackboard=#blackboard{cf_b=CF_B, cf_e=CF_E}}) when is_list(Times) ->
+	TravelTimes = lists:map(fun(Time) -> 
+		case cumulative_flow:end_time(util:timestamp(sec,erlang:now())+Time,CF_B,CF_E) of
+			?undefined -> {Time, 1+trunc(L / S)};
+		    EndTime	   -> {Time, 1+trunc(EndTime)}
+		end
+	end, Times),
 	{reply, TravelTimes, LB};
 % default callback for synchronous calls.
 handle_call(_Message, From, S) ->
@@ -189,6 +194,8 @@ handle_cast(traffic_update, LB) ->
     {noreply, NewLB};
 handle_cast({updateBeing,B}, _LB) ->
 	{noreply, B};
+handle_cast({new_flow, CFs}, LB) ->
+	{noreply, LB};
 % default callback for asynchronous casts.
 handle_cast(_Message, S) ->
 	util:log(error,{link, (S#linkBeing.state)#linkState.id}, "handle cast: state =  ~w",[S]),
@@ -360,11 +367,11 @@ code_change(_OldVsn, State, _Extra) ->
 
 % default terminate callbacks.
 terminate(normal, S) ->
-    util:log({link, (S#linkBeing.state)#linkState.id}, "Normal termination~n",[]);
+    util:log(info,{link, (S#linkBeing.state)#linkState.id}, "Normal termination~n",[]);
 terminate(shutdown, S) ->
-    util:log({link, (S#linkBeing.state)#linkState.id}, "Shutdown termination", []);
+    util:log(info,{link, (S#linkBeing.state)#linkState.id}, "Shutdown termination", []);
 terminate(Reason, S) ->
-    util:log({link, (S#linkBeing.state)#linkState.id}, "Killed with reason ~p", [Reason]).
+    util:log(error,{link, (S#linkBeing.state)#linkState.id}, "Killed with reason ~p", [Reason]).
 
 %%%%%%%%%%%%%%%%%%%%%%
 % Internal Functions %
@@ -400,7 +407,7 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, LB=#linkBe
 	end;
 execution({proclaim_flow, #scenario{antState=#antState{location=Location, creatorId=Id, data=CF}}, SenderId}, LB=#linkBeing{blackboard=#blackboard{bb_flow=BB},state=#linkState{id=LinkId,connection = Connection}}) ->
 	% add new {linkId, cumulative function} tuple to blackboard
-    % util:log({link, LinkId}, "Adding pheromone ~w", [cumulative_func:cf_to_points(CF)]),
+    % util:log(debug,{link, LinkId}, "Adding pheromone ~w", [cumulative_func:cf_to_points(CF)]),
 	pheromone:create([BB], ?evaporationTime, #info{data={Id, CF}, tags=[flow]}),
 	% propagate flow down 
 	NewCF = link_model:propagate_flow(down,CF, LB),
@@ -420,7 +427,7 @@ get_flow_cfs(Blackboard) ->
 		{result_get,[]}->[];
 		{result_get,CFs} -> lists:flatten(CFs);
 		M -> io:format("Received unknown message expected flow result: ~w~n", [M])
-	after 5000-> io:format("Waiting too long for flow response...~n"), []
+	after 10000-> io:format("Waiting too long for flow response...~n"), []
 	end.
 get_flow_pheromone(Blackboard, Id) ->
 	Blackboard ! {get,{'$1',{Id, '_'},'_'},self()},
