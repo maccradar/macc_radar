@@ -42,6 +42,7 @@
 
 -include_lib("stdlib/include/ms_transform.hrl").
 
+-define(firstMapUpdate, 30000).
 % the sample period, in [ms], for requesting map updates to the MODUM client.
 -define(mapUpdateDelay, 300000).
 
@@ -77,7 +78,8 @@ init([LinkState]) ->
 	?CREATE_DEBUG_TABLE,
     process_flag(trap_exit, true),
     % util:log(info, {link, LinkState#linkState.id}, "Initialized with ~w #lanes and length ~w}~n", [LinkState#linkState.numLanes, LinkState#linkState.length]),
- 	timer:send_interval(?mapUpdateDelay, updateMap),
+ 	timer:send_after(?firstMapUpdate, updateMap),
+	timer:send_interval(?mapUpdateDelay, updateMap),
  	timer:send_interval(?blackboardUpdateDelay, updateBlackboard),
     timer:send_interval(?linkConstraintDelay, propagateFlowDown),
 	timer:send_interval(?deleteOldHistoryDelay, deleteOldHistory),
@@ -455,7 +457,7 @@ get_traffic_update(LinkState, LB=#linkBeing{state=L, models=#models{fd=FD}}) ->
 	end,
 	TimeInterval = 300, % 5 minutes of sampling
 	Flow = LinkState#linkState.flow,
-	% io:format("Flow: ~w, density: ~w for link ~w~n", [Flow, LinkState#linkState.density, LinkState#linkState.id]),
+	util:log(debug,{link,LinkState#linkState.id},"Flow: ~w, density: ~w~n", [Flow, LinkState#linkState.density]),
 	% io:format("Capacity: ~w, Flow: ~w~n", [Capacity,Flow]),
 	NumberOfVehicles = round(TimeInterval * Flow),
 	Now = util:timestamp(sec,erlang:now()),
