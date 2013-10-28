@@ -190,6 +190,18 @@ handle_cast({traffic_update_response, Response}, S=#proxyState{linkInfoDict=Dict
 	end,
 	NewS = S#proxyState{linkInfoDict=NewDict},
     {noreply, NewS};
+handle_cast({link_update, LinkState=#linkState{id=LinkId}, From}, S=#proxyState{linkInfoDict=LinkDict}) ->
+	case dict:find(LinkId, LinkDict) of
+		{ok, #linkInformationType{avgSpeed=AvgSpeed,co2emissions=CO2,density=Density, flow=Flow}} ->
+			NewLinkState = LinkState#linkState{avgSpeed=list_to_float(AvgSpeed), co2emissions=list_to_float(CO2), density=list_to_float(Density), flow=list_to_float(Flow)},
+			% io:format("Recent info found, replying with new state~n"),
+			gen_server:cast(From,{traffic_update, NewLinkState}),
+			{noreply, S};
+		error -> % no updates received, so reply with current state
+			% io:format("No recent info found, replying with current state~n"),
+			gen_server:cast(From,{traffic_update, LinkState}),
+			{noreply, S}
+	end;
 % default callback for casts.
 handle_cast(_Message, S) ->
     {noreply, S}.
@@ -300,7 +312,7 @@ updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=Density} | 
     list_to_float(Density) == 0.0 orelse util:log(info, modum_proxy, "New density for link ~w: ~w",[list_to_atom(Id),list_to_float(Density)]),
 	NewDict = dict:store(list_to_atom(Id), LinkInfo, Dict),
 	% inform link immediately:
-	gen_server:cast(list_to_atom(Id), traffic_update),
+	% gen_server:cast(list_to_atom(Id), traffic_update),
 	updateLinkStates(NewDict,Rest);
 updateLinkStates(_, _) ->
 	{error, unknown_format}.

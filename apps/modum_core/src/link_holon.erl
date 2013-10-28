@@ -189,8 +189,8 @@ handle_call({travel_time, Times}, _From, LB=#linkBeing{state=#linkState{length=L
 handle_call(_Message, From, S) ->
 	util:log(error,{link, (S#linkBeing.state)#linkState.id}, "handle call from ~w",[From]),
     {noreply, S}.
-handle_cast(traffic_update, LB) ->
-	NewLB = get_traffic_update(LB),
+handle_cast({traffic_update, L}, LB) ->
+	NewLB = get_traffic_update(L, LB),
     {noreply, NewLB};
 handle_cast({updateBeing,B}, _LB) ->
 	{noreply, B};
@@ -201,9 +201,10 @@ handle_cast(_Message, S) ->
 	util:log(error,{link, (S#linkBeing.state)#linkState.id}, "handle cast: state =  ~w",[S]),
     {noreply, S}.
 % callback to handle updateMap message. This is periodically called to request map updates through the MODUM client.
-handle_info(updateMap, LB) ->
-    NewLB = get_traffic_update(LB),
-	{noreply, NewLB};
+handle_info(updateMap, LB=#linkBeing{state=L=#linkState{id=Id}}) ->
+    % NewLB = get_traffic_update(LB),
+	gen_server:cast(modum_proxy:get_id(),{link_update, L, Id}),
+	{noreply, LB};
 handle_info(deleteOldHistory, LB=#linkBeing{state=#linkState{id=Id}}) ->
 	Now = util:timestamp(sec,erlang:now()),
 	Window = util:timestamp(sec,?historyWindow),
@@ -438,8 +439,8 @@ get_flow_pheromone(Blackboard, Id) ->
 		after 5000-> io:format("Waiting too long for pheromone response...~n"), ?undefined
 	end.
 
-get_traffic_update(LB=#linkBeing{state=L, models=#models{fd=FD}}) ->
-	{?reply, linkUpdate, LinkState} = gen_server:call(modum_proxy:get_id(),{linkUpdate, L}, ?callTimeout),
+get_traffic_update(LinkState, LB=#linkBeing{state=L, models=#models{fd=FD}}) ->
+	% {?reply, linkUpdate, LinkState} = gen_server:call(modum_proxy:get_id(),{linkUpdate, L}, ?callTimeout),
 	% inform downstream node of "new" capacity
 	ToNode = (LinkState#linkState.connection)#connection.to,
 	Capacity = fundamental_diagram:c(FD),

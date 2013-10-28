@@ -219,7 +219,6 @@ user_response_client() ->
 
 user_request_server() ->
 	fun(A) ->
-		io:format("Received: ~p~n", [A]),
 		yaws_rpc:handler_session(A, {?MODULE, soap_callback})
 	end.
 
@@ -239,7 +238,7 @@ soap_callback(Header, Body, Action, SessionValue) ->
 % Handle RPC call
 xmlrpc_callback(#comState{parser=Parser}, {call, request, [{base64,Command}]}) ->
 	Request = base64:decode_to_string(Command),
-	io:format("Client request: ~p~n", [Request]),
+	util:log(debug, parser, "Client request: ~p~n", [Request]),
 	Response = Parser(Request),
 	% io:format("Server response: ~p~n", [Response]),
 	EncCommand = base64:encode_to_string(Response),
@@ -248,7 +247,7 @@ xmlrpc_callback(#comState{parser=Parser}, {call, request, [{base64,Command}]}) -
 % Assume base64	
 xmlrpc_callback(#comState{parser=Parser}, {call, request, [Command]}) ->
 	Request = base64:decode_to_string(Command),
-	io:format("Client request 2: ~p~n", [Request]),
+	util:log(debug, parser, "Client request: ~p~n", [Request]),
 	Response = Parser(Request),
 	% io:format("Server response 2: ~p~n", [Response]),
 	EncCommand = base64:encode_to_string(Response),
@@ -256,5 +255,5 @@ xmlrpc_callback(#comState{parser=Parser}, {call, request, [Command]}) ->
 % Fail safe when Payload is unknown
 xmlrpc_callback(_State, Payload) ->
     FaultString = lists:flatten(io_lib:format("Unknown call: ~p~n", [Payload])),
-	io:format("Server received: ~p~n", [Payload]),
+	util:log(error, parser, "Server received: ~p~n", [Payload]),
     {false, {response, {fault, -1, FaultString}}}.
