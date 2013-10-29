@@ -308,8 +308,8 @@ addLinkToGraph(_G,L,[]) ->
 
 updateLinkStates(Dict, []) ->
 	Dict;
-updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=Density} | Rest]) ->
-    list_to_float(Density) == 0.0 orelse util:log(info, modum_proxy, "New density for link ~w: ~w",[list_to_atom(Id),list_to_float(Density)]),
+updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=Density, flow=Flow} | Rest]) ->
+    list_to_float(Density) == 0.0 orelse util:log(info, modum_proxy, "New density for link ~w: ~w, flow: ~w",[list_to_atom(Id),list_to_float(Density),list_to_float(Flow)]),
 	NewDict = dict:store(list_to_atom(Id), LinkInfo, Dict),
 	% inform link immediately:
 	% gen_server:cast(list_to_atom(Id), traffic_update),

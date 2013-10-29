@@ -47,15 +47,15 @@
 -define(mapUpdateDelay, 300000).
 
 % the sample period, in [ms], for propagating the traffic flow down the link.
--define(linkConstraintDelay,6000).
+-define(linkConstraintDelay,60000).
 
 % the sample period, in [ms], for updating the cumulative flows in the blackboards.
--define(blackboardUpdateDelay,12000).
+-define(blackboardUpdateDelay,120000).
 % the evaporation time, in [ms], of pheromones created by ants on the blackboards.
--define(evaporationTime,18000).
+-define(evaporationTime,180000).
 
--define(deleteOldHistoryDelay, 30000).
--define(sumCumulativesDelay, 9000).
+-define(deleteOldHistoryDelay, 300000).
+-define(sumCumulativesDelay, 90000).
 -define(historyWindow, {0,120,0}).
 
 % start function of the gen_server, the link state representing this link holon has to be provided.

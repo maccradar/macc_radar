@@ -46,7 +46,7 @@
 -define(link_in, in). % defined in xml map as in
 -define(node_in, node_in).
 -define(node_out, node_out).
--define(callTimeout, 10000). % the timeout, in [ms], when waiting for a response from a synchronous call
+-define(callTimeout, 60000). % the timeout, in [ms], when waiting for a response from a synchronous call
 
 -record(comState,
 {
