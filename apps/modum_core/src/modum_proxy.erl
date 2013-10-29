@@ -312,7 +312,7 @@ updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=Density, fl
     list_to_float(Density) == 0.0 orelse util:log(info, modum_proxy, "New density for link ~w: ~w, flow: ~w",[list_to_atom(Id),list_to_float(Density),list_to_float(Flow)]),
 	NewDict = dict:store(list_to_atom(Id), LinkInfo, Dict),
 	% inform link immediately:
-	% gen_server:cast(list_to_atom(Id), traffic_update),
+	% list_to_atom(Id) ! updateMap,
 	updateLinkStates(NewDict,Rest);
 updateLinkStates(_, _) ->
 	{error, unknown_format}.
