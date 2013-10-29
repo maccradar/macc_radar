@@ -388,10 +388,6 @@ terminate(Reason, S) ->
 % Internal Functions %
 %%%%%%%%%%%%%%%%%%%%%%
 
-density_to_level_of_service(Density, _KJam) when Density < 0 ->
-	100;
-density_to_level_of_service(Density, KJam) when Density > KJam ->
-	0;
 density_to_level_of_service(Density, KJam) ->
 	round(100*(1 - Density / KJam)).
 	
