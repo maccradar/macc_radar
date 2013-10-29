@@ -382,7 +382,9 @@ cfs_to_points([{_,?undefined}|Tail],Acc)->
 cfs_to_points([{Name,#func{x_y=X_Y}}|Tail],Acc)->
 	Points = cf_to_points(gb_trees:to_list(X_Y)),
 	cfs_to_points(Tail, [{Name,Points}|Acc]).
-											 
+
+cf_to_points(?undefined) ->
+	[];
 cf_to_points(#func{x_y=X_Y}) ->
 	cf_to_points(gb_trees:to_list(X_Y));
 cf_to_points([{X,S}|Tail])->

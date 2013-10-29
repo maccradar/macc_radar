@@ -84,6 +84,13 @@ loop(Table)->
 				From!{result_get,Pheromones}
 			end),
 			loop(Table);
+		{get,Pattern,From,MsgTag}->
+			spawn(fun() -> 
+				Pheromones = ets:match(Table, Pattern),
+				util:log(debug, {bb_ets, get}, "From ~w, MsgTag ~w, Pheromones ~w", [From,MsgTag, Pheromones]),
+				gen_server:cast(From,{MsgTag,Pheromones})
+			end),
+			loop(Table);
 		reset-> ets:delete_all_objects(Table),
 				loop(Table);
 		_ -> loop(Table)

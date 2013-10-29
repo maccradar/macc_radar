@@ -196,8 +196,16 @@ handle_cast({traffic_update, L}, LB) ->
     {noreply, NewLB};
 handle_cast({updateBeing,B}, _LB) ->
 	{noreply, B};
-handle_cast({new_flow, CFs}, LB) ->
+handle_cast({new_flow, []}, LB) ->
 	{noreply, LB};
+handle_cast({new_flow, Flow}, LB=#linkBeing{state=#linkState{id=Id}, blackboard=BB}) ->
+	CFs = lists:flatten(Flow),
+	util:log(debug,{link, Id},"Summing CFs: ~w", [[cumulative_func:cf_to_points(C) || C <- CFs]]),
+	NewCF_Flow = cumulative_func:sum(CFs),
+	util:log(debug,{link, Id}, "New CF_Flow: ~w", [cumulative_func:cf_to_points(NewCF_Flow)]),
+	NewBB = BB#blackboard{cf_flow=NewCF_Flow},
+	NewLB = LB#linkBeing{blackboard=NewBB},
+	{noreply, NewLB};
 % default callback for asynchronous casts.
 handle_cast(_Message, S) ->
 	util:log(error,{link, (S#linkBeing.state)#linkState.id}, "handle cast: state =  ~w",[S]),
@@ -214,18 +222,18 @@ handle_info(deleteOldHistory, LB=#linkBeing{state=#linkState{id=Id}}) ->
 	{noreply, LB};
 
 handle_info(sumCumulatives, LB=#linkBeing{state=#linkState{id=Id}, blackboard=BB}) ->
-	spawn(
-		fun() ->
+	% spawn(
+	%	fun() ->
 			BB_Flow = BB#blackboard.bb_flow,
-			CFs = get_flow_cfs(BB_Flow),
-			CFs == [] orelse util:log(debug,{link, Id},"Summing CFs: ~w", [[cumulative_func:cf_to_points(C) || C <- CFs]]),
-			NewCF_Flow = cumulative_func:sum(CFs),
-			NewCF_Flow == [] orelse util:log(debug,{link, Id}, "New CF_Flow: ~w", [cumulative_func:cf_to_points(NewCF_Flow)]),
-			NewBB = BB#blackboard{cf_flow=NewCF_Flow},
-			NewLB = LB#linkBeing{blackboard=NewBB},
-			gen_server:cast(Id,{updateBeing, NewLB})
-		end
-	),
+			get_flow_cfs(async,BB_Flow),
+			% CFs == [] orelse util:log(debug,{link, Id},"Summing CFs: ~w", [[cumulative_func:cf_to_points(C) || C <- CFs]]),
+			% NewCF_Flow = cumulative_func:sum(CFs),
+			% NewCF_Flow == [] orelse util:log(debug,{link, Id}, "New CF_Flow: ~w", [cumulative_func:cf_to_points(NewCF_Flow)]),
+			% NewBB = BB#blackboard{cf_flow=NewCF_Flow},
+			% NewLB = LB#linkBeing{blackboard=NewBB},
+			% gen_server:cast(Id,{updateBeing, NewLB})
+	%	end
+	% ),
 	{noreply, LB};
 	
 % callback to handle updateBlackboard message. This is periodically called to update the cumulative flows, maintained by the blackboards.
@@ -380,6 +388,10 @@ terminate(Reason, S) ->
 % Internal Functions %
 %%%%%%%%%%%%%%%%%%%%%%
 
+density_to_level_of_service(Density, _KJam) when Density < 0 ->
+	100;
+density_to_level_of_service(Density, KJam) when Density > KJam ->
+	0;
 density_to_level_of_service(Density, KJam) ->
 	round(100*(1 - Density / KJam)).
 	
@@ -432,6 +444,8 @@ get_flow_cfs(Blackboard) ->
 		M -> io:format("Received unknown message expected flow result: ~w~n", [M])
 	after 10000-> io:format("Waiting too long for flow response...~n"), []
 	end.
+get_flow_cfs(async, Blackboard) ->
+	Blackboard ! {get,{'_',{'_', '$1'},'_'},self(), new_flow}.
 get_flow_pheromone(Blackboard, Id) ->
 	Blackboard ! {get,{'$1',{Id, '_'},'_'},self()},
 	receive
@@ -441,7 +455,7 @@ get_flow_pheromone(Blackboard, Id) ->
 		after 5000-> io:format("Waiting too long for pheromone response...~n"), ?undefined
 	end.
 
-get_traffic_update(LinkState, LB=#linkBeing{state=L, models=#models{fd=FD}}) ->
+get_traffic_update(LinkState, LB=#linkBeing{state=L=#linkState{id=Id}, models=#models{fd=FD}}) ->
 	% {?reply, linkUpdate, LinkState} = gen_server:call(modum_proxy:get_id(),{linkUpdate, L}, ?callTimeout),
 	% inform downstream node of "new" capacity
 	ToNode = (LinkState#linkState.connection)#connection.to,
@@ -460,6 +474,7 @@ get_traffic_update(LinkState, LB=#linkBeing{state=L, models=#models{fd=FD}}) ->
 	util:log(debug,{link,LinkState#linkState.id},"Flow: ~w, density: ~w~n", [Flow, LinkState#linkState.density]),
 	% io:format("Capacity: ~w, Flow: ~w~n", [Capacity,Flow]),
 	NumberOfVehicles = round(TimeInterval * Flow),
+	util:log(debug, {link, Id}, "Traffic update with ~w vehicles", [NumberOfVehicles]),
 	Now = util:timestamp(sec,erlang:now()),
 	CumulativeFunction = cumulative_func:add_point(TimeToPass+Now,NumberOfVehicles,cumulative_func:new(Now,0)),
 	NumberOfVehicles > 0 andalso traffic_ant:create_current_flow_ant(#location{resource=LinkState#linkState.id}, ToNode, LinkState#linkState.id, CumulativeFunction),
