@@ -121,7 +121,7 @@ join(#segment{p1=P,p2={X2,Y2}},nil)->
 join(#segment{p1={X1,Y1},p2=P2},#segment{p1=P1,p2={X2,Y2}}) when P1 == P2->
 	new(X1, Y1, X2, Y2);
 join(_S1,_S2)->
-	?inconsistent.
+	?undefined. % inconsistent
 
 test()->
 	gradient(#segment{p1={2,2},p2={5,4}}),
