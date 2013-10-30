@@ -130,7 +130,7 @@ handle_call({linkUpdate, LinkState=#linkState{id=LinkId}}, _From, S=#proxyState{
 	%io:format("Link ~w requests update through call.~n", [LinkId]),
 	case dict:find(LinkId, LinkDict) of
 		{ok, #linkInformationType{avgSpeed=AvgSpeed,co2emissions=CO2,density=Density, flow=Flow}} ->
-			NewLinkState = LinkState#linkState{avgSpeed=(list_to_float(Flow)/list_to_float(Density)), co2emissions=list_to_float(CO2), density=list_to_float(Density), flow=list_to_float(Flow)},
+			NewLinkState = LinkState#linkState{avgSpeed=(AvgSpeed), co2emissions=list_to_float(CO2), density=list_to_float(Density), flow=list_to_float(Flow)},
 			% io:format("Recent info found, replying with new state~n"),
 			{reply, {?reply, linkUpdate, NewLinkState}, S};
 		error -> % no updates received, so reply with current state
