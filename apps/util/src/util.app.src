@@ -14,5 +14,5 @@
                   kernel,
                   stdlib
                  ]},
-  {env, [{{log,error}, yes}, {{log,info}, no}, {{log,debug}, no}]}
+  {env, [{{log,error}, no}, {{log,info}, no}, {{log,debug}, no}]}
  ]}.
