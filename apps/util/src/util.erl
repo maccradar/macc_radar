@@ -42,6 +42,10 @@ timestamp(tuple, Seconds) ->
 	
 log(LogType, Id, Message, Params) ->
 	{ok, Logging} = application:get_env(util,{log,LogType}),
+	{ok, Write} = application:get_env(util, {write_log,LogType}),
+	{ok, File} = application:get_env(util, log_file),
 	String = "[~w | ~w:~w:~w | ~w]: " ++ Message ++ "~n",
 	{_,{H,M,S}} = calendar:now_to_local_time(erlang:now()),
-	Logging == yes andalso io:format(String, [LogType,H,M,S,Id]++Params).
+	Logging == yes andalso io:format(String, [LogType,H,M,S,Id]++Params),
+	Write == yes andalso file:write_file(File, io_lib:fwrite(String, [LogType,H,M,S,Id]++Params)).
+	
