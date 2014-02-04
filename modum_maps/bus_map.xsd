@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" version="1.1">
+
+
+    <!-- <bus name = "77"> -->
+    <!-- <stopList> -->
+    <!-- <direction dir="positive" length="a float"> -->
+    <!-- <stop>segmentId#, GPS coords?</stop> -->
+    <!-- ... -->
+    <!-- <stop>segmentId#, GPS coords?</stop> -->
+    <!-- <stop>segmentId#, GPS coords?</stop> -->
+    <!-- ... -->
+    <!-- <stop>segmentId#, GPS coords?</stop> -->
+    <!-- </direction> -->
+    <!-- <direction dir="negative" length="a float"> -->
+    <!-- ... -->
+    <!-- ... -->
+    <!-- </direction> -->
+    <!-- </stopList> -->
+    <!-- </bus> -->
+ 
+ <xs:element name="busMap">
+    <xs:annotation>
+      <xs:documentation>
+	The bus map contains a list of buses and their associated stops
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+	<xs:element name="bus" type="busType" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  
+ <xs:element name="stopType">
+    <xs:annotation>
+      <xs:documentation>
+	A collection of bus stop characteristics
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+	<xs:element name="segID" type="xs:string" minOccurs="1" maxOccurs="1"/>
+	<xs:element name="gpsCoords" type="xs:string" minOccurs="1" maxOccurs="1" />
+	<xs:element name="stopTimes" type="xs:string" minOccurs="1" maxOccurs="1" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  
+
+  <!-- definition of simple elements for later -->
+  <!-- a stop type will be segmentId#, GPS coords? -->
+ 
+  <xs:complexType name="busType">
+    <xs:annotation>
+      <xs:documentation>
+	Describes a bus
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:attribute name="name" type="xs:string" minOccurs="1" maxOccurs="1"/>
+      <xs:element name="stop" type="stopType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+
+</xs:schema>
