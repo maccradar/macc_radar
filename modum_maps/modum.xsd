@@ -34,9 +34,9 @@
       <xs:element ref="maxSpeed" minOccurs="1" />
       <xs:element ref="shape"/>
 	  <xs:element ref="GPSshape"/>
+	  <xs:element name="coordinates" type="coordinatesType" minOccurs="1" maxOccurs="unbounded" />
 	  <xs:element ref="linkDesc" minOccurs="1" />
 	  <xs:element ref="roadType" minOccurs="1" />
-	  <xs:element name="coordinates" type="coordinatesType" minOccurs="1" maxOccurs="unbounded" />
     </xs:sequence>
   </xs:complexType>
 
