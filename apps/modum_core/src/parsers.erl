@@ -76,7 +76,7 @@ traffic_update_client() ->
 	fun({async, Model},#comState{ip=Ip,port=Port}) when is_record(Model,model) ->
 		{ok, Request, _} = erlsom:scan_file(filename:join([ProjectDir, ComDir, "modum_updateRequest.xml"]), Model),
 		{ok, Command} = erlsom:write(Request, Model),
-		EncCommand = base64:encode_to_string("<?xml version=\"1.0\" encoding=\"utf-8\" ?>"++Command),
+		EncCommand = base64:encode_to_string("<?xml version=\"1.0\" encoding=\"utf-8\" ?><updateRequest><id>1</id><mapCommand>\"NO_ACTION\"</mapCommand><commandString>\"None\"</commandString></updateRequest>"),
 		case gen_tcp:connect(Ip,Port,[{active, false}]) of
 			{ok, Socket} -> 
 				io:format("Request: ~p~n", [Request]),

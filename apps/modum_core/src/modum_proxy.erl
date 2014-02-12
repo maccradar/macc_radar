@@ -268,11 +268,11 @@ code_change(_OldVsn, State, _Extra) ->
 
 % default terminate callbacks
 terminate(normal, _S) ->
-    io:format("Modum client stopped normally~n");
+    io:format("Modum proxy stopped normally~n");
 terminate(shutdown, _S) ->
-    io:format("Modum client got shutdown~n");
+    io:format("Modum proxy got shutdown~n");
 terminate(Reason, _S) ->
-    io:format("Modum client got killed with reason:~n"),
+    io:format("Modum proxy got killed with reason:~n"),
 	io:write(Reason).
 
 

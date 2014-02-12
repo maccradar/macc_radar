@@ -20,7 +20,7 @@
   <xs:element name="roadType" type="xs:string" />
   <!-- GPSshape is a list of lon, lat GPS coords of the x,y coords in shape -->
   <xs:element name="GPSshape" type="xs:string" />
-
+  
   <xs:complexType name="linkType">
     <xs:annotation>
       <xs:documentation>
@@ -33,13 +33,15 @@
       <xs:element ref="length" minOccurs="1" />
       <xs:element ref="maxSpeed" minOccurs="1" />
       <xs:element ref="shape"/>
-	  <xs:element ref="GPSshape"/>
-	  <xs:element name="coordinates" type="coordinatesType" minOccurs="1" maxOccurs="unbounded" />
-	  <xs:element ref="linkDesc" minOccurs="1" />
-	  <xs:element ref="roadType" minOccurs="1" />
+      <xs:element ref="GPSshape"/>
+      <xs:element name="coordinates" type="coordinatesType" minOccurs="1" maxOccurs="unbounded" />
+      <xs:element ref="linkDesc" minOccurs="1" />
+      <xs:element ref="roadType" minOccurs="1" />
+      <xs:element name="foot" type="xs:boolean" minOccurs="1" maxOccurs="1" />
+      <xs:element name="cycle" type="xs:boolean" minOccurs="1" maxOccurs="1" />
     </xs:sequence>
   </xs:complexType>
-
+	
   <xs:complexType name="linkInformationType">
     <xs:annotation>
       <xs:documentation>
@@ -84,8 +86,8 @@
       </xs:documentation>
     </xs:annotation>
     <xs:all>
-      <xs:element name="idfrom" type="xs:string" />
-      <xs:element name="idto" type="xs:string" />
+      <xs:element name="idfrom" type="xs:string" minOccurs="0"/>
+      <xs:element name="idto" type="xs:string" minOccurs="0"/>
     </xs:all>
   </xs:complexType>
 
@@ -104,7 +106,7 @@
 		<xs:element ref="lon" />
 	</xs:all>
    </xs:complexType>
-
+  
   <xs:element name="topologyMap">
     <xs:annotation>
       <xs:documentation>
@@ -169,7 +171,7 @@
       </xs:all>
     </xs:complexType>
   </xs:element>
-
+  
    <xs:complexType name="forecastIntervalType">
 	<xs:all>
 		<xs:element name="timeStart" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
@@ -177,21 +179,21 @@
 		<xs:element name="travelTime" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
 	</xs:all>
   </xs:complexType>
-
+  
   <xs:complexType name="linkForecastType">
 	<xs:sequence>
 	<xs:element ref="id" minOccurs="1" maxOccurs="1" />
 	<xs:element name="interval" type="forecastIntervalType" minOccurs="1" maxOccurs="unbounded" />
 	</xs:sequence>
   </xs:complexType>
-
+  
   <xs:complexType name="pathType">
 	<xs:sequence>
 	<xs:element ref="id" minOccurs="1" maxOccurs="unbounded" />
 	</xs:sequence>
   </xs:complexType>
-
-
+  
+  
   <xs:element name="forecastRequest">
     <xs:complexType>
 	<xs:all>
@@ -200,15 +202,15 @@
     </xs:complexType>
   </xs:element>
 
-  <xs:element name="forecastResponse">
+<xs:element name="forecastResponse">
     <xs:complexType>
 	<xs:sequence>
       <xs:element name="link" type="linkForecastType" minOccurs="1" maxOccurs="unbounded"/>
 	</xs:sequence>
     </xs:complexType>
   </xs:element>
-
-  <xs:element name="userRequest">
+  
+<xs:element name="userRequest">
     <xs:complexType>
 	<xs:sequence>
     <xs:element name="userId" type="xs:string" />
@@ -219,24 +221,11 @@
     </xs:complexType>
   </xs:element>
 
-  <xs:element name="userResponse">
+<xs:element name="userResponse">
 	<xs:complexType>
 	<xs:sequence>
     <xs:element name="userId" type="xs:string" minOccurs="1" />
 	</xs:sequence>
 	</xs:complexType>
-  </xs:element>
+</xs:element>
 </xs:schema>
-
-<xs:complextType name ="busStopType">
-       <xs:annotation>
-      <xs:documentation>
-                Provides bus stop info
-      </xs:documentation>
-    </xs:annotation>
-                <xs:sequence>
-    <xs:element name="stopId" type="xs:string" />
-                <xs:element name="busId" type="xs:string" />
-                <xs:element name="nextStopId" type="xs:string" />
-                </xs:sequence>
-    </xs:complexType>

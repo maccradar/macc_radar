@@ -35,4 +35,4 @@
 -record('nodeType', {anyAttribs, 'id', 'nodeDesc', 'linkPair', 'coordinates'}).
 -record('linkPairType', {anyAttribs, 'idfrom', 'idto'}).
 -record('linkInformationType', {anyAttribs, 'id', 'co2emissions', 'density', 'avgSpeed', 'flow'}).
--record('linkType', {anyAttribs, 'id', 'numLanes', 'length', 'maxSpeed', 'shape', 'GPSshape', 'linkDesc', 'roadType', 'coordinates'}).
+-record('linkType', {anyAttribs, 'id', 'numLanes', 'length', 'maxSpeed', 'shape', 'GPSshape', 'coordinates', 'linkDesc', 'roadType', 'foot', 'cycle'}).

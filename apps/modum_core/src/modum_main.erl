@@ -70,7 +70,7 @@ start(normal, _Args) ->
 	{ok, ClientSv} = client_sv:start_link(simple),
 	% start user response client (detergent)
 	{ok, UserResponseClient} = supervisor:start_child(ClientSv, [#comState{init=inits:user_response_client(), ip=UserResponseIp, port=UserResponsePort, parser=parsers:user_response_client()}]),
-	io:format("User response client: ~w~n", [UserResponseClient]),
+	util:log(info, {main, start}, "User response client: ~w", [UserResponseClient]),
 	{ok, TrafficUpdateClient} = supervisor:start_child(ClientSv, [#comState{init=inits:traffic_update_client(), ip=TrafficUpdateIp, port=TrafficUpdatePort, parser=parsers:traffic_update_client()}]),
 	% start supervisor for all servers
 	{ok, ServerSv} = server_sv:start_link(simple),
@@ -87,7 +87,7 @@ start(normal, _Args) ->
 	{ok, OptimalPathServer} = supervisor:start_child(ServerSv,[#comState{init=inits:xmlrpc_server(),ip=Ip, port=OptimalPathPort, parser=parsers:optimal_path_server(filename:join([ProjectDir,ComDir,Xsd]))}]),
 	% start user request server (yaws)
 	{ok, UserRequestServer} = supervisor:start_child(ServerSv,[#comState{init=inits:user_request_server(),ip=Ip, port=UserRequestPort, parser=parsers:user_request_server()}]),
-	io:format("User request server: ~w~n", [UserRequestServer]),
+	util:log(info, {main, start}, "User request server: ~w", [UserRequestServer]),
 	% io:format("Response from yaws: ~w~n",[Result]),
 	?id ! {init, 
 		   self(), 
@@ -104,7 +104,8 @@ start(normal, _Args) ->
 	receive
 		{?reply, init, Result} ->
 			{Result, Main}
-	after 10000 -> error
+	after 100000 -> 
+		util:log(info, {main, start}, "Starting modum_main took too long, quitting...", []), error
 	end.
 	
 stop(_State) ->
@@ -134,7 +135,7 @@ loop(Data={NSV,LSV,VSV}) ->
 			{ok, Model} ->
 				case init(Map, ProxyState#proxyState{model=Model}) of
 					{ok, NewNSV, NewLSV, NewVSV} ->
-						io:format("Initialization finished, entering main loop.~n"),
+						util:log(info, {main, start}, "Initialization finished, entering main loop.", []),
 						Pid ! {?reply, init, ok},
 						loop({NewNSV, NewLSV, NewVSV});
 					error ->
@@ -167,6 +168,7 @@ init(Map, ProxyState=#proxyState{model=Model}) ->
 	case erlsom:scan_file(Map, Model) of
 		{ok, MapData, _} ->
 			{Nodes, Links} = parse_map(MapData),
+			util:log(info, {main, init}, "Parsed ~w nodes and ~w links.", [length(Nodes), length(Links)]),
 			modum_proxy:start_link(ProxyState), % need supervisor?
 			{ok, NSV} = node_holon_sv:start_link(simple),
 			lists:foreach(fun(Node)->supervisor:start_child(NSV, [Node]) end, Nodes),
@@ -175,8 +177,10 @@ init(Map, ProxyState=#proxyState{model=Model}) ->
 			{ok, VSV} = vehicle_holon_sv:start_link(simple),
 			U = atom_to_list(?undefined),
 			FilterN = [F || F <- Nodes, F#nodeState.coordinates /= [{U,U}]],
-			io:format("Filtered ~w nodes with undefined coordinates~n", [length(Nodes)-length(FilterN)]),
-			modum_proxy:create_graph({FilterN, Links}),
+			util:log(info, {main, init}, "Filtered ~w nodes with undefined coordinates.", [length(Nodes)-length(FilterN)]),
+			util:log(info, {main, init}, "Node stats: ~p", [supervisor:count_children(NSV)]),
+			util:log(info, {main, init}, "Link stats: ~p", [supervisor:count_children(LSV)]),
+			% modum_proxy:create_graph({FilterN, Links}),
 			add_turning_fractions({FilterN, Links}),
 			{ok, NSV, LSV, VSV};
 		{error, Error} ->
@@ -189,7 +193,8 @@ parse_map(MapData) ->
 	{NodeStates, _,_,Dict} = lists:foldl(
 		fun(#nodeType{id=Id, nodeDesc=Desc, linkPair=LP, coordinates=Coords}, {NodeDict, NodeIn, NodeOut, LinkConnections}) -> 
 			LF =  lists:foldl(
-				fun(#linkPairType{idfrom=From, idto=To}, {ConnectionsList,LinkConnections2,Id1}) -> 
+				fun
+				   (#linkPairType{idfrom=From, idto=To}, {ConnectionsList,LinkConnections2,Id1}) -> 
 					Id2 = Id1, % get_id(list_to_atom(From), list_to_atom(To), Id1),
 					LC=dict:store({list_to_atom(From),out},Id2,LinkConnections2),
 					LC2=dict:store({list_to_atom(To),in},Id2,LC),
@@ -201,9 +206,10 @@ parse_map(MapData) ->
 			  NewNode = #nodeState{id=element(3,LF), desc=Desc, connections=element(1,LF)++get_connections(element(3,LF),NodeIn,NodeOut), coordinates=NewCoords},
 			  NewNodeDict = dict:store(element(3,LF),NewNode,NodeDict),
 			  {NewNodeDict, update_node(?node_in,NewNode,NodeIn), update_node(?node_out,NewNode,NodeOut),element(2,LF)}
-		end, {dict:new(), ?undefined, ?undefined, dict:new()}, Nodes),	
+		end, {dict:new(), ?undefined, ?undefined, dict:new()}, Nodes),
+	util:log(info, {main, parse_map}, "Processed ~w nodes and add ~w items to dict.", [length(Nodes), dict:size(Dict)]),
 	{LinkStates, FinalNodeDict} = lists:foldl(
-		fun(#linkType{id=Id, numLanes=Lanes, length=Length, maxSpeed=MaxSpeed, shape=ShapeString, linkDesc=Desc, roadType=RoadType, coordinates=Coords}, {LinkList, NodeDict}) ->
+		fun(#linkType{id=Id, numLanes=Lanes, length=Length, maxSpeed=MaxSpeed, shape=ShapeString, linkDesc=Desc, roadType=RoadType, coordinates=Coords, foot=Foot, cycle=Cycle}, {LinkList, NodeDict}) ->
 			Shape = shape_to_points(ShapeString),
 			[FirstS | _] = Shape,
 			[LastS | _] = lists:reverse(Shape),
@@ -215,9 +221,8 @@ parse_map(MapData) ->
 			NewNodeDict1 = dict:store(FromNode,FromNS#nodeState{shape=[FirstS, FirstS]},NodeDict),
 			NewNodeDict2 = dict:store(ToNode, ToNS#nodeState{shape=[LastS, LastS]}, NewNodeDict1),
 			NewCoords = [{Lat,Lon} || #coordinatesType{lat=Lat, lon=Lon} <- Coords],
-			{[#linkState{id=LinkId2, desc=Desc, numLanes=Lanes, length=list_to_float(Length), maxAllowedSpeed=list_to_float(MaxSpeed),connection=#connection{from=FromNode, to=ToNode}, shape=Shape, roadType=RoadType, coordinates=NewCoords} | LinkList], NewNodeDict2}
+			{[#linkState{id=LinkId2, desc=Desc, numLanes=Lanes, length=list_to_float(Length), maxAllowedSpeed=list_to_float(MaxSpeed),connection=#connection{from=FromNode, to=ToNode}, shape=Shape, roadType=RoadType, coordinates=NewCoords, foot=Foot, cycle=Cycle} | LinkList], NewNodeDict2}
 		end, {[], NodeStates}, Links),
-	io:format("Parsed ~B nodes and ~B links~n",[length(Nodes), length(LinkStates)]),
 	{[X || {_,X} <- dict:to_list(FinalNodeDict)],LinkStates}.
 		
 update_node(Id, NewNode=#nodeState{id=Id},_) ->

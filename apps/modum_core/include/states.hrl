@@ -164,7 +164,9 @@
 	flow				=0.0					::float(),					% [#cars/s]
 	avgSpeed			=0.0					::float(),					% [m/s]
 	roadType									::string(),
-	coordinates									::list({float(),float()})   % [{lat, lon}]
+	coordinates									::list({float(),float()}),   % [{lat, lon}]
+	foot				=false					::boolean(),
+	cycle				=false					::boolean()
 }).
 
 % defines the link being, containing the internal state, set of models and blackboard used by the link holon.

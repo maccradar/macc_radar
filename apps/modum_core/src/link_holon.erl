@@ -77,7 +77,6 @@ init([LinkState]) ->
     %% To know when the parent shuts down
 	?CREATE_DEBUG_TABLE,
     process_flag(trap_exit, true),
-    % util:log(info, {link, LinkState#linkState.id}, "Initialized with ~w #lanes and length ~w}~n", [LinkState#linkState.numLanes, LinkState#linkState.length]),
  	timer:send_after(?firstMapUpdate, updateMap),
 	timer:send_interval(?mapUpdateDelay, updateMap),
  	timer:send_interval(?blackboardUpdateDelay, updateBlackboard),
@@ -90,7 +89,7 @@ init([LinkState]) ->
 	BB_flow = bb_ets:create("BB_flow_"++atom_to_list(LinkState#linkState.id)),
 	TTM = (fun(TimeBegin,LB) -> link_model:end_time(TimeBegin,LB) end),
 	STM = (fun(TimeEnd,LB) -> link_model:start_time(TimeEnd,LB) end),
-	FD = fundamental_diagram:init({city,LinkState#linkState.maxAllowedSpeed, LinkState#linkState.numLanes}),
+	FD = fundamental_diagram:init({list_to_atom(LinkState#linkState.roadType),LinkState#linkState.maxAllowedSpeed, LinkState#linkState.numLanes}),
 	Flow= 0.0,% fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
 	M = #models{fd=FD, ttm=TTM, stm=STM},
 	NewLinkState = LinkState#linkState{flow=Flow},
@@ -382,6 +381,7 @@ terminate(normal, S) ->
 terminate(shutdown, S) ->
     util:log(info,{link, (S#linkBeing.state)#linkState.id}, "Shutdown termination", []);
 terminate(Reason, S) ->
+	io:format("Link ~w got killed with reason: ~w~n", [(S#linkBeing.state)#linkState.id, Reason]),
     util:log(error,{link, (S#linkBeing.state)#linkState.id}, "Killed with reason ~p", [Reason]).
 
 %%%%%%%%%%%%%%%%%%%%%%
