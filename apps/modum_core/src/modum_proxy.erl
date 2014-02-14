@@ -149,6 +149,7 @@ handle_call({client,Name}, _From, State=#proxyState{clients=Clients}) ->
 	{reply, {?reply, client, Client},State};
 
 handle_call({links_of_type,RoadType}, _From, State=#proxyState{cache=Cache, links=Links}) ->
+	util:log(info, {proxy, links_of_type}, "Road type: ~p", [RoadType]),
 	case dict:find({link_ids, RoadType},Cache) of
 		{ok, LinkIds} ->  
 			{reply, {?reply, links_of_type, LinkIds}, State};

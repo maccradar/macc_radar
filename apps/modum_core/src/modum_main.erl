@@ -180,7 +180,7 @@ init(Map, ProxyState=#proxyState{model=Model}) ->
 			util:log(info, {main, init}, "Filtered ~w nodes with undefined coordinates.", [length(Nodes)-length(FilterN)]),
 			util:log(info, {main, init}, "Node stats: ~p", [supervisor:count_children(NSV)]),
 			util:log(info, {main, init}, "Link stats: ~p", [supervisor:count_children(LSV)]),
-			% modum_proxy:create_graph({FilterN, Links}),
+			modum_proxy:create_graph({FilterN, Links}),
 			add_turning_fractions({FilterN, Links}),
 			{ok, NSV, LSV, VSV};
 		{error, Error} ->

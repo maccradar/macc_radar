@@ -15,8 +15,8 @@
                   stdlib
                  ]},
   {env, [	{{log,error}, yes}, 
-			{{log,info}, yes},
-			{{log,debug}, yes},
+			{{log,info}, no},
+			{{log,debug}, no},
 			{{write_log,error}, yes},
 			{{write_log,info}, yes},
 			{{write_log,debug}, yes},

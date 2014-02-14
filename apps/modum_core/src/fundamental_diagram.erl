@@ -65,10 +65,17 @@ init({service, MaxSpeed, NumLanes}) when (MaxSpeed > 0) and (NumLanes > 0) ->
 % using default values for C and Kjam for all other road types
 % C = # vehicles / second -> in city 1800 / h -> 0.5 / s for each lane
 % Kjam = # vehicles / meter -> avg vehicle length of 5 meters results in Kjam of 0.2 for each lane
-init({RoadType,MaxSpeed,NumLanes}) when (MaxSpeed > 0) and (NumLanes > 0) ->
+init({RoadType,MaxSpeed,NumLanes}) when (MaxSpeed > 5) and (NumLanes > 0) ->
 	C = 0.5 * NumLanes,
-	init(C/MaxSpeed, C, NumLanes / ?vehicle_length).
+	init(C/MaxSpeed, C, NumLanes / ?vehicle_length);
 
+% using default values for C and Kjam for all other road types
+% C = # vehicles / second -> in city 720 / h -> 0.2 / s for each lane
+% Kjam = # vehicles / meter -> avg vehicle length of 5 meters results in Kjam of 0.2 for each lane
+init({RoadType,MaxSpeed,NumLanes}) when (MaxSpeed < 5) and (NumLanes > 0) ->
+	C = 0.2 * NumLanes,
+	init(C/MaxSpeed, C, NumLanes / ?vehicle_length).	
+	
 kc(#k_q{kc=Kc})->
 	Kc.
 c(#k_q{c=C})->
