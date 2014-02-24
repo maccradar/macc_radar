@@ -1,5 +1,11 @@
 <h2 id="estimation">Traffic estimation at current time</h2>
 <input type="range" name="time" min="0" max="1800" value="0" step="300" style="width: 600px;" onchange='updateTime(this.value);'>
+<form>
+<select id="city" onchange="change_city(this);">
+  <option value="%ncenter%">Nottingham</option>
+  <option value="%scenter%">Sofia</option>
+</select>
+</form>
 <div id="map" style="width: 600px; height: 400px"></div>
 
 	<script>
@@ -64,14 +70,18 @@
 		};
 				
 		L.control.layers(baseMaps, overlayMaps).addTo(map);
-		map.setView(%center%, 13);
+		
+		city = document.getElementById("city");
+		map.setView(eval(city.options[city.selectedIndex].value), 13);
 
 		//map.on('click', onMapClick);
 
 
 	//Server side events for traffic density estimation
     var refresh_source = "";
-
+	function change_city(city) {
+		map.setView(eval(city.options[city.selectedIndex].value), 13);
+	};
 	function refresh(cb) {
 		if(cb.checked) {
 			refresh_source = new EventSource("/density/?primary=1&trunk=1&secondary=1&tertiary=1&residential=1&time="+estimation_time);

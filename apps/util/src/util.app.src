@@ -15,10 +15,10 @@
                   stdlib
                  ]},
   {env, [	{{log,error}, yes}, 
-			{{log,info}, no},
+			{{log,info}, yes},
 			{{log,debug}, no},
-			{{write_log,error}, yes},
-			{{write_log,info}, yes},
-			{{write_log,debug}, yes},
+			{{write_log,error}, no},
+			{{write_log,info}, no},
+			{{write_log,debug}, no},
 			{log_file, "util.log"}]}
  ]}.

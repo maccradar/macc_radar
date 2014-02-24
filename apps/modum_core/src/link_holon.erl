@@ -352,7 +352,7 @@ handle_info({get_info, Pid},  LB=#linkBeing{state=#linkState{id=Id}}) ->
 	Pid ! {info, Id, LB},
 	{noreply, LB};
 handle_info({get_density, 0, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD},state=#linkState{id=Id, density=Density, coordinates=Coordinates}}) ->
-	util:log(info,{link,Id},"Density: ~w QoS: ~w", [Density, density_to_level_of_service(Density, fundamental_diagram:kjam(FD))]),
+	util:log(debug,{link,Id},"Density: ~w QoS: ~w", [Density, density_to_level_of_service(Density, fundamental_diagram:kjam(FD))]),
 	
 	Pid ! {density, Id, {Coordinates,density_to_level_of_service(Density, fundamental_diagram:kjam(FD))}},
 	{noreply, LB};

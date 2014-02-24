@@ -47,5 +47,5 @@ log(LogType, Id, Message, Params) ->
 	String = "[~w | ~w:~w:~w | ~w]: " ++ Message ++ "~n",
 	{_,{H,M,S}} = calendar:now_to_local_time(erlang:now()),
 	Logging == yes andalso io:format(String, [LogType,H,M,S,Id]++Params),
-	Write == yes andalso file:write_file(File, io_lib:fwrite(String, [LogType,H,M,S,Id]++Params)).
+	Write == yes andalso file:write_file(File, io_lib:fwrite(String, [LogType,H,M,S,Id]++Params),[append]).
 	
