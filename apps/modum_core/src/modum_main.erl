@@ -262,21 +262,24 @@ add_turning_fractions({Nodes, _Links}) ->
 				NodeId ! {add_turning_fractions, From, [{ToId,1.0}]};
 		{?reply, connections, Connections} -> UTurnFun =
 				fun	(#connection{from=U1,to=U2})-> 
-						([C || C <- atom_to_list(U1), C =/= $-] == [C || C <- atom_to_list(U2), C =/= $-]) andalso 
-						(NodeId ! {add_turning_fractions, U1, [{U2,0.0}]});
-					(_) -> use_turndefs 
+						U1_Clean = [C || C <- atom_to_list(U1), C =/= $-],
+						U2_Clean = [C || C <- atom_to_list(U2), C =/= $-],
+						case U1_Clean == U2_Clean of
+							true ->  NodeId ! {add_turning_fractions, U1, [{U2,0.0}]};
+							_ -> NodeId ! {add_turning_fractions, U1, [{U2, 1.0 / length(Connections)-1}]}
+						end
 				end,
 				lists:foreach(UTurnFun, Connections)
 		end
 	end,
-	lists:foreach(NodeFun, Nodes),
-	TurnFun = fun({FromId2,Pid,Tos}) when Pid =/= undefined -> 
-		Pid ! {downstream_connections, self()},
-		NodeId = receive
-			{?reply, downstream_connections, [Node]} -> Node
-			end,
-		NodeId ! {add_turning_fractions, FromId2, Tos};
-			({_,_,_}) ->
-				ignore_undefined_links
-		end,
-	lists:foreach(TurnFun,FromTos).
+	lists:foreach(NodeFun, Nodes).
+	% TurnFun = fun({FromId2,Pid,Tos}) when Pid =/= undefined -> 
+	%	Pid ! {downstream_connections, self()},
+	%	NodeId = receive
+	%		{?reply, downstream_connections, [Node]} -> Node
+	%		end,
+	%	NodeId ! {add_turning_fractions, FromId2, Tos};
+	%		({_,_,_}) ->
+	%			ignore_undefined_links
+	%	end,
+	% lists:foreach(TurnFun,FromTos).
