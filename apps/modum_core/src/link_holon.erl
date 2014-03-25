@@ -44,7 +44,7 @@
 
 -define(firstMapUpdate, 30000).
 % the sample period, in [ms], for requesting map updates to the MODUM client.
--define(mapUpdateDelay, 30000).
+-define(mapUpdateDelay, 300000).
 
 % the sample period, in [ms], for propagating the traffic flow down the link.
 -define(linkConstraintDelay,15000).
@@ -210,9 +210,21 @@ handle_cast(_Message, S) ->
 	util:log(error,{link, (S#linkBeing.state)#linkState.id}, "handle cast: state =  ~w",[S]),
     {noreply, S}.
 % callback to handle updateMap message. This is periodically called to request map updates through the MODUM client.
-handle_info(updateMap, LB=#linkBeing{state=L=#linkState{id=Id}}) ->
+handle_info(updateMap, LB=#linkBeing{state=L=#linkState{id=Id,roadType=RoadType}}) ->
     % NewLB = get_traffic_update(LB),
-	gen_server:cast(modum_proxy:get_id(),{link_update, L, Id}),
+	case RoadType of
+		'living_street' -> ignore;
+		'unclassified' -> ignore;
+		'residential' -> ignore;
+		'service' -> ignore;
+		'track' -> ignore;
+		'footway' -> ignore;
+		'pedestrian' -> ignore;
+		'steps' -> ignore;
+		'cycleway' -> ignore;
+		'path' ->  ignore;
+		_ -> gen_server:cast(modum_proxy:get_id(),{link_update, L, Id})
+	end,
 	{noreply, LB};
 handle_info(deleteOldHistory, LB=#linkBeing{state=#linkState{id=Id}}) ->
 	Now = util:timestamp(sec,erlang:now()),
@@ -359,11 +371,18 @@ handle_info({get_density, 0, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD}
 handle_info({get_density, Time, discrete, Pid}, LB=#linkBeing{models=#models{fd=FD}, blackboard=#blackboard{cf_b = CF_B, cf_e = CF_E}, state=#linkState{length=L, id=Id, density=_Density, coordinates=Coordinates}}) when L /= 0 ->
 	Now = util:timestamp(sec,erlang:now()),
 	N = cumulative_flow:nbr_vehicles(Time+Now,CF_B,CF_E),
+	MaxN = L / ?vehicle_length,
+	N == 0 orelse util:log(info, {link,Id}, "#veh: ~w.",[N]),
+	N > 0 orelse util:log(info, {link,Id}, "#veh are 0",[]),
 	QoS = case L < ?vehicle_length of
 		true ->	density_to_level_of_service(0,fundamental_diagram:kjam(FD));
-		_ -> density_to_level_of_service(N/L,fundamental_diagram:kjam(FD))
+		_ -> case N > MaxN of 
+			true -> util:log(info, {link,Id}, "#veh: ~w, max: ~w.", [N, MaxN]), density_to_level_of_service(1.0/ ?vehicle_length,fundamental_diagram:kjam(FD));
+			_ -> density_to_level_of_service(N/L, fundamental_diagram:kjam(FD))
+		end
 	end,
 	((QoS < 0) or (N < 0)) andalso util:log(error,{link,Id},"QoS: ~w. #vehicles: ~w at ~w, CF_B: ~w, CF_E: ~w",[QoS,N,Time+Now, cumulative_func:cf_to_points(CF_B),cumulative_func:cf_to_points(CF_E)]),
+	util:log(info, {link,Id}, "QoS: ~w.",[QoS]),
 	Pid ! {density, Id, {Coordinates,QoS}},
 	{noreply, LB};
 % default callback for messages.
@@ -422,9 +441,9 @@ execution({proclaim_flow, #scenario{antState=#antState{location=Location, creato
 	pheromone:create([BB], ?evaporationTime, #info{data={Id, CF}, tags=[flow]}),
 	% propagate flow down 
 	NewCF = link_model:propagate_flow(down,CF, LB),
-	% io:format("New CF in link ~w: ~w~n", [LinkId,{Connection#connection.to, cumulative_func:cfs_to_points([{LinkId, NewCF}],[])}]),
+	util:log(debug,{link, LinkId}, "New CF in execute/proclaim_flow: ~w~n", [{Connection#connection.to, cumulative_func:cfs_to_points([{LinkId, NewCF}],[])}]),
 	% send new cumulative function back to current flow ant
-	% io:format("creating current flow ant on ~w for ~w~n", [Connection#connection.to, Id]),
+	util:log(debug,{link, LinkId}, "Creating current flow ant on ~w for ~w~n", [Connection#connection.to, Id]),
 	spawn(
 		fun() ->
 			traffic_ant:create_current_flow_ant(Location, Connection#connection.to, Id, NewCF)
@@ -432,14 +451,14 @@ execution({proclaim_flow, #scenario{antState=#antState{location=Location, creato
 	).
 	% SenderId ! {?reply, proclaim_flow, [{Connection#connection.to, NewCF}]}.
 
-get_flow_cfs(Blackboard) ->
+get_flow_cfs(sync, Blackboard) ->
 	Blackboard ! {get,{'_',{'_', '$1'},'_'},self()},
 	receive
 		{result_get,[]}->[];
 		{result_get,CFs} -> lists:flatten(CFs);
 		M -> io:format("Received unknown message expected flow result: ~w~n", [M])
 	after 10000-> io:format("Waiting too long for flow response...~n"), []
-	end.
+	end;
 get_flow_cfs(async, Blackboard) ->
 	Blackboard ! {get,{'_',{'_', '$1'},'_'},self(), new_flow}.
 get_flow_pheromone(Blackboard, Id) ->

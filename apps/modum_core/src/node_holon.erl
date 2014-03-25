@@ -192,6 +192,7 @@ execution({proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antS
 	CFs = [{To, cumulative_func:multiply(y, dict:fetch({From, To},TurningFractionDict), CF)} || #connection{from = From, to = To} <- Connections, From == Previous, To /= ?link_out],
 	% filter out cumulatives with a largest y value (# vehicles) smaller than or equal to 1
 	NewCFs = lists:filter(fun({_, NewCF}) -> {Y, _} =  cumulative_func:last(y, NewCF), Y > 10 end, CFs),
+	util:log(info,{node,proclaim_flow},"CFs vs NewCFs: ~w vs ~w", [length(CFs), length(NewCFs)]),
 	spawn(
 		fun() ->
 			lists:foreach(fun({Next, NextCF}) -> 
