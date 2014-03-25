@@ -35,7 +35,7 @@
 				return layer;
   		}
 		var tileSize = 256;
-		var cloudmadeUrl = 'http://{s}.tile.cloudmade.com/BC9A493B41014CAABB98F0471D759707/{styleId}/'+tileSize+'/{z}/{x}/{y}.png',
+		var cloudmadeUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
 		attribution = 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>'
 		var minimal   = L.tileLayer(cloudmadeUrl, {styleId: 22677, attribution: attribution}), // grayscale
 			fresh = L.tileLayer(cloudmadeUrl, {styleId: 997, attribution: attribution}), // color distinction between roads
@@ -84,7 +84,7 @@
 	};
 	function refresh(cb) {
 		if(cb.checked) {
-			refresh_source = new EventSource("/density/?primary=1&trunk=1&secondary=1&tertiary=1&residential=1&time="+estimation_time);
+			refresh_source = new EventSource("/density/?primary=1&trunk=1&secondary=1&tertiary=1&time="+estimation_time);
 			refresh_source.onmessage = function(event) {
 				var d = window.atob(event.data);
 				var routes = eval(d);
@@ -129,7 +129,7 @@
 	function updateLayers(routes) {
 		routeLayer.clearLayers();
 		for(var i=0; i<routes.length;i++) {
-			routeLayer.addLayer(createRoute(routes[i][0],level_of_service[routes[i][1]]));
+				routeLayer.addLayer(createRoute(routes[i][0],level_of_service[routes[i][1]]));
 		}
 	}
 	updateTime("0");

@@ -28,4 +28,4 @@ def removeUturn(xml, outputfile):
     xmltree.write(outputfile)
     print 'Done!'
     
-removeUturn('nottingham.net.xml', 'output.net.xml')
+removeUturn('nottingham-center-november.net.xml', 'output.net.xml')

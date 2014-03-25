@@ -250,12 +250,12 @@ shape_to_points(Shape) ->
 	lists:map(F, Ps).
 
 add_turning_fractions({Nodes, _Links}) ->
-	{ok, ProjectDir} = application:get_env(modum_core,project_dir),
-	{ok, ComDir} = application:get_env(modum_core,com_dir),
-	{ok, TurnDefsFile} = application:get_env(modum_core,turn_defs),
-	{ok, Xml} = file:read_file(filename:join([ProjectDir,ComDir,TurnDefsFile])),
-	{ok, {_Tag, _Att, Content}, _Tail} = erlsom:simple_form(Xml),
-	FromTos = [{list_to_atom(FromId), whereis(list_to_atom(FromId)),[{list_to_atom(ToId), list_to_float(Prob)/100.0} || {"toEdge",[{"probability", Prob},{"id", ToId}],[]} <- Tos]} || {"fromEdge",[{"id",FromId}],Tos} <-Content],
+	% {ok, ProjectDir} = application:get_env(modum_core,project_dir),
+	% {ok, ComDir} = application:get_env(modum_core,com_dir),
+	% {ok, TurnDefsFile} = application:get_env(modum_core,turn_defs),
+	% {ok, Xml} = file:read_file(filename:join([ProjectDir,ComDir,TurnDefsFile])),
+	% {ok, {_Tag, _Att, Content}, _Tail} = erlsom:simple_form(Xml),
+	% FromTos = [{list_to_atom(FromId), whereis(list_to_atom(FromId)),[{list_to_atom(ToId), list_to_float(Prob)/100.0} || {"toEdge",[{"probability", Prob},{"id", ToId}],[]} <- Tos]} || {"fromEdge",[{"id",FromId}],Tos} <-Content],
 	NodeFun = fun(#nodeState{id=NodeId}) ->
 		case gen_server:call(NodeId, connections) of
 		{?reply, connections, [#connection{from=From, to=ToId}]} -> 
@@ -266,7 +266,7 @@ add_turning_fractions({Nodes, _Links}) ->
 						U2_Clean = [C || C <- atom_to_list(U2), C =/= $-],
 						case U1_Clean == U2_Clean of
 							true ->  NodeId ! {add_turning_fractions, U1, [{U2,0.0}]};
-							_ -> NodeId ! {add_turning_fractions, U1, [{U2, 1.0 / length(Connections)-1}]}
+							_ -> NodeId ! {add_turning_fractions, U1, [{U2, 0.25}]} % 1.0 / (length(Connections)-1)}]}
 						end
 				end,
 				lists:foreach(UTurnFun, Connections)
