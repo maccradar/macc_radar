@@ -48,6 +48,7 @@
 %% ===================================================================
 
 start(normal, _Args) ->
+	util:log(info, {main, start}, "Starting main process: ~w", [self()]),
 	?CREATE_DEBUG_TABLE,
 	Main = spawn(?MODULE,loop,[{?undefined,?undefined,?undefined}]),
 	register(?id, Main),
@@ -126,6 +127,7 @@ create_vehicle({VehicleState,Mode,K}) ->
 % - send {init, {Xsd, Map}} to initialise the program
 % - send stop to stop the program. This will kill/shutdown all its child processes 
 loop(Data={NSV,LSV,VSV}) ->
+	util:log(info, {main, loop}, "Internal loop: ~w", [self()]),
 	receive 
 		{init,Pid, Xsd, Map, ProxyState} ->
 			{ok, ProjectDir} = application:get_env(modum_core,project_dir),
@@ -165,6 +167,7 @@ loop(Data={NSV,LSV,VSV}) ->
 	end.
 
 init(Map, ProxyState=#proxyState{model=Model}) ->
+	util:log(info, {main, init}, "Initialising modum system: ~w", [self()]),
 	case erlsom:scan_file(Map, Model) of
 		{ok, MapData, _} ->
 			{Nodes, Links} = parse_map(MapData),
