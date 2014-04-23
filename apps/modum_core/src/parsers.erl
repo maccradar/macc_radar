@@ -55,7 +55,7 @@ xmlrpc_client() ->
 		{ok, Command} = erlsom:write(Request, Model),
 		EncCommand = base64:encode_to_string(Command),
 		{ok, Socket} = gen_tcp:connect(Ip,Port,[{active, false}]),
-		case xmlrpc:call(Socket, "/", {call, forecastrequest, [{base64,EncCommand}]}) of
+		case xmlrpc:call(Socket, "/", {call, request, [{base64,EncCommand}]}) of
 			{ok,{response,[EncResponse]}} ->
 				Response = base64:decode_to_string(EncResponse),
 				{ok, Result, _} = erlsom:scan(Response, Model),
@@ -71,21 +71,42 @@ xmlrpc_client() ->
 	end.	
 	
 traffic_update_client() ->
-	fun(Model,#comState{ip=Ip,port=Port}) when is_record(Model,model) ->
-		{ok, ProjectDir} = application:get_env(modum_core,project_dir),
-		{ok, ComDir} = application:get_env(modum_core,com_dir),
+	{ok, ProjectDir} = application:get_env(modum_core,project_dir),
+	{ok, ComDir} = application:get_env(modum_core,com_dir),	
+	fun({async, Model},#comState{ip=Ip,port=Port}) when is_record(Model,model) ->
+		{ok, Request, _} = erlsom:scan_file(filename:join([ProjectDir, ComDir, "modum_updateRequest.xml"]), Model),
+		{ok, Command} = erlsom:write(Request, Model),
+		EncCommand = base64:encode_to_string("<?xml version=\"1.0\" encoding=\"utf-8\" ?><updateRequest><id>1</id><mapCommand>\"NO_ACTION\"</mapCommand><commandString>\"None\"</commandString></updateRequest>"),
+		case gen_tcp:connect(Ip,Port,[{active, false}]) of
+			{ok, Socket} -> 
+				util:log(info,traffic_update_client, "Request: ~p", [Request]),
+				case xmlrpc:call(Socket, "/RPC2", {call, request, [{base64, EncCommand}]}, false, 300000) of
+					{ok,{response,[EncResponse]}} ->
+						Response = base64:decode_to_string(EncResponse),
+						{ok, Result, _} = erlsom:scan(Response, Model),
+						% Result = #updateResponse{id="random", ok=true, extrastatus="Nothing", map=#mapInformationType{name="Nottingham", version="1", link=generate_random_traffic()}},
+						gen_server:cast(modum_proxy, {traffic_update_response, Result});
+					Error -> 
+						util:log(error,traffic_update_client,"Error receiving response ~p", [Error]),
+						gen_server:cast(modum_proxy, {traffic_update_response, ?undefined})
+			end;
+			{error, Error} ->
+				io:format("Could not open socket ~w:~w due to: ~w~n", [Ip,Port,Error]),
+				gen_server:cast(modum_proxy, {traffic_update_response, ?undefined})
+		end;
+		({sync,Model},#comState{ip=Ip,port=Port}) when is_record(Model,model) ->
 		{ok, Request, _} = erlsom:scan_file(filename:join([ProjectDir, ComDir, "modum_updateRequest.xml"]), Model),
 		{ok, Command} = erlsom:write(Request, Model),
 		EncCommand = base64:encode_to_string(Command),
-		% {ok,{hostent,Host,_,_,_,_}} = inet:gethostbyaddr(Ip),
 		{ok, Socket} = gen_tcp:connect(Ip,Port,[{active, false}]),
+		io:format("command: ~p~n", [Command]),
 		case xmlrpc:call(Socket, "/", {call, request, [{base64, EncCommand}]}) of
 			{ok,{response,[EncResponse]}} ->
 				Response = base64:decode_to_string(EncResponse),
 				{ok, Result, _} = erlsom:scan(Response, Model),
 				Result;
 			Error -> 
-				io:format("Error receiving response ~w~n", [Error]),
+				io:format("Error receiving response ~p~n", [Error]),
 				?undefined
 		end;
 		(Payload,_) ->
@@ -95,14 +116,13 @@ traffic_update_client() ->
 	
 traffic_update_server(Xsd) ->
 	fun(Request) ->
-		{ok, ProjectDir} = application:get_env(modum_core, project_dir),
-		{ok, ComDir} = application:get_env(modum_core,com_dir),
 		case erlsom:compile_xsd_file(Xsd) of
 			{ok, Model} ->
 				case erlsom:scan(Request, Model) of
-					{ok, Xml, _} ->
-						{ok, Response, _} = erlsom:scan_file(filename:join([ProjectDir,ComDir,"modum_updateResponse.xml"]), Model),
-						C = Response#updateResponse{extrastatus=Xml#updateRequest.commandString},
+					{ok, _Xml, _} ->
+						% {ok, Response, _} = erlsom:scan_file(filename:join([ProjectDir,ComDir,"modum_updateResponse.xml"]), Model),
+						% C = Response#updateResponse{extrastatus=Xml#updateRequest.commandString},
+						C = #updateResponse{id="random", ok=true, extrastatus="Nothing", map=#mapInformationType{name="Nottingham", version="1", link=generate_random_traffic()}},
 						case erlsom:write(C, Model) of
 							{ok, Command} ->
 								Command;
@@ -124,7 +144,8 @@ forecast_server(Xsd) ->
 				case erlsom:scan(Request, Model) of
 					{ok, Xml, _} ->
 						TimeWindow = Xml#forecastRequest.timeWindow,
-						Forecast = getForecast(TimeWindow),
+						F = modum_proxy:get_forecast(list_to_integer(TimeWindow)),
+						Forecast = prepare_forecast_output(F),
 						C = #forecastResponse{link=Forecast},
 						case erlsom:write(C, Model) of
 							{ok, Command} ->
@@ -139,21 +160,41 @@ forecast_server(Xsd) ->
 				Error
 		end
 	end.
+
+density(_N, L) when (L < ?vehicle_length) ->
+	0.0;
+density(N, L) when (L >= ?vehicle_length) ->
+	N / L.
 	
-getForecast(_TimeWindow) ->
-	[#linkForecastType{id="link0",interval=
-		[#forecastIntervalType{timeStart="0",timeStop="100",travelTime="10"},
-		 #forecastIntervalType{timeStart="0",timeStop="100",travelTime="10"}]},
-	 #linkForecastType{id="link1",interval=
-		[#forecastIntervalType{timeStart="0",timeStop="100",travelTime="20"},
-		 #forecastIntervalType{timeStart="0",timeStop="100",travelTime="20"}]}].
+generate_random_traffic() ->
+	{Links, _Nodes} = modum_proxy:get_status_info(),
+	GenFun = fun(L) ->
+		SimulationTime = 300,
+		{?reply, being, #linkBeing{state=S, models=#models{fd=FD}}} = gen_server:call(L, being, ?callTimeout),
+		FreeFlow= fundamental_diagram:q(fundamental_diagram:kc(FD), FD),
+		Length = S#linkState.length,
+		Lanes = S#linkState.numLanes,
+		N1 = random:uniform(round(SimulationTime * FreeFlow)), % vehicles which have passed in the last 5 minutes
+		N2 = trunc(min(random:uniform()*N1, (Length*Lanes) / ?vehicle_length)), % vehicles on link, should be less than the amount of vehicles that have passed and also less the the maximum amount of 5m vehicles
+		Density = density(N2, Length),
+		Occupancy = Density * ?vehicle_length,
+		CO2 = N1*0.2*S#linkState.length, % 200g/km/car
+		AvgS = (1-Occupancy)*S#linkState.maxAllowedSpeed,
+		Flow = N1 / SimulationTime,
+		Density =< ((1 / ?vehicle_length) * Lanes) orelse io:format("Link ~w: N1 ~w, N2 ~w, NumLanes: ~w, Length: ~w, Density ~w~n",[L,N1, N2, Lanes, Length,Density]),
+		#linkInformationType{id=atom_to_list(L), co2emissions=float_to_list(CO2), density=float_to_list(Density), avgSpeed=float_to_list(AvgS), flow=float_to_list(Flow)}
+	end,
+	lists:map(GenFun,Links).
+
+prepare_forecast_output(Forecast) ->
+	[#linkForecastType{id=atom_to_list(Id),interval=[#forecastIntervalType{timeStart=integer_to_list(T), timeStop=integer_to_list(T+TimeStep), travelTime=integer_to_list(TravelTime)} || {T,TravelTime} <- TravelTimes]} || {Id, TravelTimes, TimeStep} <- Forecast].
 
 optimal_path_server(Xsd) ->
 	fun(Request) ->
 		case erlsom:compile_xsd_file(Xsd) of
 			{ok, Model} ->
 				case erlsom:scan(Request, Model) of
-					{ok, Xml, _} ->
+					{ok, _Xml, _} ->
 						C = #userResponse{userId="ok"},
 						case erlsom:write(C, Model) of
 							{ok, Command} ->
@@ -178,7 +219,6 @@ user_response_client() ->
 
 user_request_server() ->
 	fun(A) ->
-		io:format("Received: ~p~n", [A]),
 		yaws_rpc:handler_session(A, {?MODULE, soap_callback})
 	end.
 
@@ -198,22 +238,22 @@ soap_callback(Header, Body, Action, SessionValue) ->
 % Handle RPC call
 xmlrpc_callback(#comState{parser=Parser}, {call, request, [{base64,Command}]}) ->
 	Request = base64:decode_to_string(Command),
-	io:format("Client request: ~p~n", [Request]),
+	util:log(info, xmlrpc_callback, "Client request: ~p", [Request]),
 	Response = Parser(Request),
-	io:format("Server response: ~p~n", [Response]),
+	% io:format("Server response: ~p~n", [Response]),
 	EncCommand = base64:encode_to_string(Response),
     {false, {response, [EncCommand]}};
 
 % Assume base64	
 xmlrpc_callback(#comState{parser=Parser}, {call, request, [Command]}) ->
 	Request = base64:decode_to_string(Command),
-	io:format("Client request 2: ~p~n", [Request]),
+	util:log(info, xmlrpc_callback, "Client request: ~p", [Request]),
 	Response = Parser(Request),
-	io:format("Server response 2: ~p~n", [Response]),
+	% io:format("Server response 2: ~p~n", [Response]),
 	EncCommand = base64:encode_to_string(Response),
     {false, {response, [EncCommand]}};
 % Fail safe when Payload is unknown
 xmlrpc_callback(_State, Payload) ->
-    FaultString = lists:flatten(io_lib:format("Unknown call: ~p", [Payload])),
-	io:format("Server received: ~p", [Payload]),
+    FaultString = lists:flatten(io_lib:format("Unknown call: ~p~n", [Payload])),
+	util:log(error, parser, "Server received: ~p", [Payload]),
     {false, {response, {fault, -1, FaultString}}}.

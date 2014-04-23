@@ -31,7 +31,7 @@
 -module(modum_proxy).
 -behaviour(gen_server).
 
--export([start_link/1, stop/0, create_graph/1, vertex/1, get_graph/0, get_k_shortest_path/3, get_status_info/0, get_server/1, get_client/1, get_links_of_type/1]).
+-export([start_link/1, stop/0, create_graph/1, vertex/1, get_forecast/1, get_graph/0, get_k_shortest_path/3, get_status_info/0, get_server/1, get_client/1, get_links_of_type/1, get_closest_node/1]).
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, code_change/3, terminate/2, get_id/0]).
 
@@ -52,6 +52,13 @@ vertex(V) ->
 		{?reply, vertex, V1} -> V1
 	end.
 
+get_forecast(TimeWindow) ->
+	gen_server:call(?ID, {forecast, TimeWindow}, ?callTimeout).
+	
+get_closest_node({Lat,Lon}) ->
+	{?reply, closest_node, NodeId} = gen_server:call(?ID, {closest_node, {Lat,Lon}}, ?callTimeout),
+	NodeId.
+	
 get_graph() ->
 	get_id() ! {get_graph, self()},
 	receive
@@ -96,6 +103,8 @@ init([ProxyState]) ->
     process_flag(trap_exit, true),
 	%{ok, NodeDict, LinkDict} = parseMap(Map),
 	%{ok, Graph} = createGraph(Map),
+	% start by requesting a traffic update 10 seconds after boot
+	timer:send_after(10000, traffic_update),
 	timer:send_interval(?DELAY, traffic_update),
 	{ok, ProxyState#proxyState{nodeInfoDict=dict:new(), linkInfoDict=dict:new(), cache=dict:new()}}.
 	
@@ -104,7 +113,7 @@ handle_call(stop, _From, S=#proxyState{}) ->
     {stop, normal, ok, S};
 % callback for synchronous call to get system time
 handle_call(time, _From, S) ->
-	{reply,{?reply, time, util:timestamp(erlang:now())}, S};
+	{reply,{?reply, time, util:timestamp(sec,erlang:now())}, S};
 % callback for synchronous call to request a node update.
 % this function replies with the most recent node state data, which is retrieved in the node info dictionary.
 handle_call({nodeUpdate, NodeState=#nodeState{id=NodeId}}, _From, S=#proxyState{nodeInfoDict=NodeDict}) ->
@@ -120,12 +129,12 @@ handle_call({nodeUpdate, NodeState=#nodeState{id=NodeId}}, _From, S=#proxyState{
 handle_call({linkUpdate, LinkState=#linkState{id=LinkId}}, _From, S=#proxyState{linkInfoDict=LinkDict}) ->
 	%io:format("Link ~w requests update through call.~n", [LinkId]),
 	case dict:find(LinkId, LinkDict) of
-		{ok, #linkInformationType{avgSpeed=AvgSpeed,co2emissions=CO2,density=Density}} ->
-			NewLinkState = LinkState#linkState{avgSpeed=AvgSpeed, co2emissions=CO2, density=Density},
-			%io:format("Recent info found, replying with new state~n"),
+		{ok, #linkInformationType{avgSpeed=AvgSpeed,co2emissions=CO2,density=Density, flow=Flow}} ->
+			NewLinkState = LinkState#linkState{avgSpeed=(AvgSpeed), co2emissions=list_to_float(CO2), density=list_to_float(Density), flow=list_to_float(Flow)},
+			% io:format("Recent info found, replying with new state~n"),
 			{reply, {?reply, linkUpdate, NewLinkState}, S};
 		error -> % no updates received, so reply with current state
-			%io:format("No recent info found, replying with current state~n"),
+			% io:format("No recent info found, replying with current state~n"),
 			{reply, {?reply, linkUpdate, LinkState}, S}
 	end;
 
@@ -140,6 +149,7 @@ handle_call({client,Name}, _From, State=#proxyState{clients=Clients}) ->
 	{reply, {?reply, client, Client},State};
 
 handle_call({links_of_type,RoadType}, _From, State=#proxyState{cache=Cache, links=Links}) ->
+	util:log(info, {proxy, links_of_type}, "Road type: ~p", [RoadType]),
 	case dict:find({link_ids, RoadType},Cache) of
 		{ok, LinkIds} ->  
 			{reply, {?reply, links_of_type, LinkIds}, State};
@@ -148,26 +158,62 @@ handle_call({links_of_type,RoadType}, _From, State=#proxyState{cache=Cache, link
 			NewCache = dict:store({link_ids, RoadType}, Result, Cache),
 			{reply, {?reply, links_of_type, Result}, State#proxyState{cache=NewCache}}
 	end;
-	
+
+handle_call({closest_node, {Lat,Lon}}, _From, State=#proxyState{nodes=Nodes}) ->
+	Dists = [{NodeId, node_holon:get_distance(NodeId, {Lat,Lon})} || NodeId <- Nodes],
+	{ClosestId, _Distance} = lists:foldl(fun({Id1,Dist}, {_Id,Min}) when Dist < Min -> {Id1,Dist}; (_,A) -> A end, {?undefined, ?inf}, Dists),
+	{reply, {?reply, closest_node, ClosestId}, State};
+
+handle_call({check_consistency, nodes}, _From, State = #proxyState{nodes=Nodes}) ->
+	CheckFun = fun(NodeId) ->
+		{?reply, check_consistency, Check} = gen_server:call(NodeId,check_consistency),
+		Check
+	end,
+	Result = lists:all(CheckFun, Nodes),
+	{reply, {?reply, {check_consistency, nodes}, Result}, State};
+
+handle_call({forecast, TimeWindow}, _From, State = #proxyState{links=Links}) ->
+	TimeStep = 300,
+	Times = lists:seq(0, TimeWindow, TimeStep), % sample every 5 minutes
+	F = fun(LinkId) ->
+		{LinkId, gen_server:call(LinkId, {travel_time, Times}, ?callTimeout), TimeStep}
+	end,
+	Forecast = lists:map(F, Links),
+	{reply, Forecast, State};
 % default callback for synchronous calls.
 handle_call(_Message, _From, S) ->
     {noreply, S}.
-
+handle_cast({traffic_update_response, Response}, S=#proxyState{linkInfoDict=Dict}) ->
+	NewDict = case Response of
+		?undefined -> Dict;
+		_ -> 	util:log(info, modum_proxy, "Received parsed response, updated link states~n",[]),
+				updateLinkStates(Dict, Response#updateResponse.map#mapInformationType.link)
+	end,
+	NewS = S#proxyState{linkInfoDict=NewDict},
+    {noreply, NewS};
+handle_cast({link_update, LinkState=#linkState{id=LinkId}, From}, S=#proxyState{linkInfoDict=LinkDict}) ->
+	case dict:find(LinkId, LinkDict) of
+		{ok, #linkInformationType{avgSpeed=AvgSpeed,co2emissions=CO2,density=Density, flow=Flow}} ->
+			NewLinkState = LinkState#linkState{avgSpeed=list_to_float(AvgSpeed), co2emissions=list_to_float(CO2), density=list_to_float(Density), flow=list_to_float(Flow)},
+			% io:format("Recent info found, replying with new state~n"),
+			gen_server:cast(From,{traffic_update, NewLinkState}),
+			{noreply, S};
+		error -> % no updates received, so reply with current state
+			% io:format("No recent info found, replying with current state~n"),
+			gen_server:cast(From,{traffic_update, LinkState}),
+			{noreply, S}
+	end;
 % default callback for casts.
 handle_cast(_Message, S) ->
     {noreply, S}.
 
 % callback to handle the interval message. This is used to trigger an update request to the UTMC server.
-handle_info(traffic_update, S = #proxyState{model=Model, linkInfoDict=Dict, clients=Clients}) ->
+handle_info(traffic_update, S = #proxyState{model=Model, clients=Clients}) ->
     [TUC | _] = [C || {N,C} <- Clients, N == ?traffic_update_client],
-	{transmit, Response} = gen_server:call(TUC,{transmit, Model}),
-	NewDict = case Response of
-		?undefined -> Dict;
-		_ -> 	io:format("Received parsed response, updating link states~n"),
-				updateLinkStates(Dict, Response#updateResponse.map#mapInformationType.link)
-	end,
-	NewS = S#proxyState{linkInfoDict=NewDict},
-    {noreply, NewS};
+	%{transmit, Response} = 
+	gen_server:cast(TUC,{transmit, {async, Model}}),
+    {noreply, S};
+	
 % callback to handle the state message. This can be used to request the state of the modum client.
 % the sender pid has to be specified in the message.
 handle_info({state, Pid}, S=#proxyState{}) ->
@@ -223,11 +269,11 @@ code_change(_OldVsn, State, _Extra) ->
 
 % default terminate callbacks
 terminate(normal, _S) ->
-    io:format("Modum client stopped normally~n");
+    io:format("Modum proxy stopped normally~n");
 terminate(shutdown, _S) ->
-    io:format("Modum client got shutdown~n");
+    io:format("Modum proxy got shutdown~n");
 terminate(Reason, _S) ->
-    io:format("Modum client got killed with reason:~n"),
+    io:format("Modum proxy got killed with reason:~n"),
 	io:write(Reason).
 
 
@@ -263,9 +309,11 @@ addLinkToGraph(_G,L,[]) ->
 
 updateLinkStates(Dict, []) ->
 	Dict;
-updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=Density} | Rest]) ->
-	list_to_float(Density) == 0.0 orelse io:format("new density for link ~w: ~w~n",[list_to_atom(Id),list_to_float(Density)]),
+updateLinkStates(Dict, [LinkInfo=#linkInformationType{id=Id, density=Density, flow=Flow} | Rest]) ->
+    list_to_float(Density) == 0.0 orelse util:log(info, modum_proxy, "New density for link ~w: ~w, flow: ~w",[list_to_atom(Id),list_to_float(Density),list_to_float(Flow)]),
 	NewDict = dict:store(list_to_atom(Id), LinkInfo, Dict),
+	% inform link immediately:
+	% list_to_atom(Id) ! updateMap,
 	updateLinkStates(NewDict,Rest);
 updateLinkStates(_, _) ->
 	{error, unknown_format}.
