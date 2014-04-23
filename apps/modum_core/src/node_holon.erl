@@ -31,29 +31,26 @@
 -module(node_holon).
 -behaviour(gen_server).
 
--export([start_link/1, stop/1, get_description/1, get_coordinates/1, get_distance/2, get_turning_fractions/1]).
+-export([start_link/1, stop/1, get_description/1, get_coordinates/1]).
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, code_change/3, terminate/2]).
 -include("states.hrl").
 -define(DELAY, 300000).
 
 get_description(Id) ->
-	{?reply, state, S} = gen_server:call(Id, state, ?callTimeout),
-	S#nodeState.desc.
+	Id ! {state, self()},
+	Info = receive
+		{reply, state, S} -> S
+	end,
+	Info#nodeState.desc.
 
 get_coordinates(Id) ->
-	{?reply, state, S} = gen_server:call(Id, state, ?callTimeout),
-	S#nodeState.coordinates.
+	Id ! {state, self()},
+	Info = receive
+		{reply, state, S} -> S
+	end,
+	Info#nodeState.coordinates.
 
-get_distance(Id, {Lat1,Lon1}) ->
-	{?reply, state, S} = gen_server:call(Id, state, ?callTimeout),
-	[{Lat2,Lon2}] = S#nodeState.coordinates,
-	math:pow(Lat1-Lat2,2) + math:pow(Lon1-Lon2,2).
-	
-get_turning_fractions(Id) ->
-	{?reply, turning_fractions, TF} = gen_server:call(Id, turning_fractions, ?callTimeout),
-	TF.
-	
 start_link(NodeState=#nodeState{id=Id}) when is_atom(Id) ->
     gen_server:start_link({local,Id}, ?MODULE, [NodeState], []).
 
@@ -66,26 +63,11 @@ init([NodeState]) ->
     %io:format("Initialized node with state {~s,~s}~n", [NodeState#nodeState.id, NodeState#nodeState.desc]),
 	TTM = (fun(TimeBegin) -> TimeBegin end),
 	STM = (fun(TimeEnd) -> TimeEnd end),
-	FD = fundamental_diagram:init(0.015, 0.5, 1 / ?vehicle_length), 
+	FD = fundamental_diagram:init(0.015, 0.5, 0.2), 
 	M = #models{fd=FD, ttm=TTM, stm=STM},
-	NodeBeing = #nodeBeing{state=NodeState#nodeState{capacities=dict:new(), turningFractions=dict:new()},models=M},
+	NodeBeing = #nodeBeing{state=NodeState#nodeState{capacities=dict:new()},models=M},
 	{ok, NodeBeing}.
 
-handle_call(check_consistency, _From, NB=#nodeBeing{state=#nodeState{id = Id,turningFractions=TF, connections = Connections}}) ->
-	CheckFun = fun(#connection{from=From, to=To}) ->
-		Ok = dict:is_key({From,To},TF),
-		Ok orelse io:format("check failed for node ~w on link pair: ~w, ~w~n",[Id,From,To]),
-		Ok
-	end,
-	Result = lists:all(CheckFun, Connections),
-	{reply, {?reply, check_consistency, Result}, NB};
-
-handle_call(turning_fractions, _From, S=#nodeBeing{state=#nodeState{turningFractions=TF}}) ->
-	{reply, {?reply, turning_fractions, dict:to_list(TF)}, S};
-handle_call(connections, _From, S=#nodeBeing{state=#nodeState{connections=C}}) ->
-	{reply, {?reply, connections, C}, S};
-handle_call(state, _From, NB=#nodeBeing{state=S}) ->
-	{reply, {?reply, state, S}, NB};
 handle_call(stop, _From, S=#nodeBeing{}) ->
     {stop, normal, ok, S};
 handle_call(_Message, _From, S) ->
@@ -125,9 +107,6 @@ handle_info(Message = {proclaim,_Scenario,_SenderId}, NB) ->
 handle_info(Message = {explore_upstream,_Scenario,_SenderId}, NB) ->
 	execution(Message,NB),
 	{noreply, NB};
-handle_info(Message = {proclaim_flow,_Scenario,_SenderId}, NB) ->
-	execution(Message,NB),
-	{noreply, NB};	
 handle_info({being, Pid}, NB) ->
 	Pid ! {?reply, being, NB},
 	{noreply, NB};
@@ -148,13 +127,6 @@ handle_info({subscribe, get_info, Interval, repeat, Receiver}, NB) ->
 handle_info({get_info, Pid},  NB=#nodeBeing{state=#nodeState{id=Id}}) ->
 	Pid ! {info, Id, NB},
 	{noreply, NB};
-handle_info({add_turning_fractions, FromId, Tos}, NB=#nodeBeing{state=NS=#nodeState{turningFractions=TF, connections=_Connections}}) ->
-	ToFun = fun({ToId, Prob}, AccTF) ->
-		dict:store({FromId,ToId}, Prob, AccTF)
-		end,
-	NewTF = lists:foldl(ToFun, TF, Tos),
-	NewNB = NB#nodeBeing{state=NS#nodeState{turningFractions=NewTF}},
-	{noreply, NewNB};
 handle_info(Message, S) ->
 	io:format("Node ~s received unknown message ~w~n",[(S#nodeBeing.state)#nodeState.id, Message]),
     {noreply, S}.
@@ -186,18 +158,4 @@ execution({explore_upstream, #scenario{timeSlot={_,Time}}, SenderId}, #nodeBeing
 			io:format("start time for node ~w: ~w~n",[Id,ET]),
 			SenderId ! {?reply,explore_upstream, ET};
 		T -> io:format("start time is not calculated correctly ~w~n",[T])
-	end;
-execution({proclaim_flow, #scenario{boundaryCondition = Previous, antState=#antState{location=Location=#location{resource=_Rid},creatorId=Cid,data=CF}}, _SenderId}, _NB = #nodeBeing{state=#nodeState{connections = Connections, turningFractions=TurningFractionDict}}) ->
-	% get turning fractions and multiply them with the given cumulative to obtain new cumulatives to pass to the links
-	CFs = [{To, cumulative_func:multiply(y, dict:fetch({From, To},TurningFractionDict), CF)} || #connection{from = From, to = To} <- Connections, From == Previous, To /= ?link_out],
-	% filter out cumulatives with a largest y value (# vehicles) smaller than or equal to 1
-	NewCFs = lists:filter(fun({_, NewCF}) -> {Y, _} =  cumulative_func:last(y, NewCF), Y > 10 end, CFs),
-	util:log(debug,{node,proclaim_flow},"CFs vs NewCFs: ~w vs ~w", [length(CFs), length(NewCFs)]),
-	spawn(
-		fun() ->
-			lists:foreach(fun({Next, NextCF}) -> 
-				% io:format("creating current flow ant on ~w for ~w~n", [Next, Cid]),
-				traffic_ant:create_current_flow_ant(Location, Next, Cid, NextCF) end, NewCFs)
-		end
-	).
-	% SenderId ! {?reply, proclaim_flow, NewCFs}.
+	end.
