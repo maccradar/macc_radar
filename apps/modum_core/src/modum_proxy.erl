@@ -186,7 +186,7 @@ handle_call(_Message, _From, S) ->
 handle_cast({traffic_update_response, Response}, S=#proxyState{linkInfoDict=Dict}) ->
 	NewDict = case Response of
 		?undefined -> Dict;
-		_ -> 	util:log(info, modum_proxy, "Received parsed response, updated link states~n",[]),
+		_ -> 	io:format("Received parsed response, updating link states~n"),
 				updateLinkStates(Dict, Response#updateResponse.map#mapInformationType.link)
 	end,
 	NewS = S#proxyState{linkInfoDict=NewDict},

@@ -47,7 +47,7 @@ start_link(ComState=#comState{init=Init,ip=Ip,port=Port,parser=Parser})
 		 is_function(Parser) ->
 	gen_server:start_link(?MODULE, [ComState], []);
 start_link(Other) ->
-	util:log(error, server, "Invalid com state for server: ~w", [Other]).
+	io:format("Invalid com state for server: ~w~n", [Other]).
 
 % init server
 init([ServerState=#comState{init=Init}]) ->
@@ -55,17 +55,17 @@ init([ServerState=#comState{init=Init}]) ->
     process_flag(trap_exit, true),
 	case Init(ServerState) of
 		ok -> 
-			util:log(info, server,"Initialized server for ~w:~w at ~w.", [ServerState#comState.ip, ServerState#comState.port, self()]),
+			io:format("Initialized server for ~w:~w at ~w.~n", [ServerState#comState.ip, ServerState#comState.port, self()]),
 			{ok, ServerState};
 		error ->
-			util:log(error, server, "Initialization of server ~w failed!", [ServerState]),
+			io:format("Initialization of server ~w failed!~n", [ServerState]),
 			{stop, "Initialization failed"}
 	end.
 
 	
 handle_call({request, Data}, _From, S=#comState{parser=Parser}) ->
 	Result = Parser(Data),
-	util:log(info, server, "Server ~w parsed request with result: ~p",[self(),Result]),
+	io:format("Server request result: ~p~n",[Result]),
 	{reply, {reply,request,Result}, S};
 handle_call(stop, _From, S) ->
     {stop, normal, ok, S};
@@ -80,7 +80,7 @@ handle_info({request, Data}, S=#comState{parser=Parser}) ->
 	{noreply, S};
 	
 handle_info(Message, S) ->
-	util:log(error, server, "Server ~w received unknown message ~w",[self(),Message]),
+	io:format("Server received unknown message ~w~n",[Message]),
     {noreply, S}.
 
 code_change(_OldVsn, State, _Extra) ->
