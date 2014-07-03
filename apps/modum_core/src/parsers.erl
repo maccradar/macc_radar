@@ -87,7 +87,7 @@ traffic_update_client() ->
 						% Result = #updateResponse{id="random", ok=true, extrastatus="Nothing", map=#mapInformationType{name="Nottingham", version="1", link=generate_random_traffic()}},
 						gen_server:cast(modum_proxy, {traffic_update_response, Result});
 					Error -> 
-						io:format("Error receiving response ~p~n", [Error]),
+						util:log(error,traffic_update_client,"Error receiving response ~p", [Error]),
 						gen_server:cast(modum_proxy, {traffic_update_response, ?undefined})
 			end;
 			{error, Error} ->
@@ -239,7 +239,7 @@ soap_callback(Header, Body, Action, SessionValue) ->
 % Handle RPC call
 xmlrpc_callback(#comState{parser=Parser}, {call, request, [{base64,Command}]}) ->
 	Request = base64:decode_to_string(Command),
-	util:log(debug, parser, "Client request: ~p~n", [Request]),
+	util:log(info, xmlrpc_callback, "Client request: ~p", [Request]),
 	Response = Parser(Request),
 	% io:format("Server response: ~p~n", [Response]),
 	EncCommand = base64:encode_to_string(Response),
@@ -248,13 +248,13 @@ xmlrpc_callback(#comState{parser=Parser}, {call, request, [{base64,Command}]}) -
 % Assume base64	
 xmlrpc_callback(#comState{parser=Parser}, {call, request, [Command]}) ->
 	Request = base64:decode_to_string(Command),
-	util:log(debug, parser, "Client request: ~p~n", [Request]),
+	util:log(info, xmlrpc_callback, "Client request: ~p", [Request]),
 	Response = Parser(Request),
 	% io:format("Server response 2: ~p~n", [Response]),
 	EncCommand = base64:encode_to_string(Response),
     {false, {response, [EncCommand]}};
 % Fail safe when Payload is unknown
 xmlrpc_callback(_State, Payload) ->
-    FaultString = lists:flatten(io_lib:format("Unknown call: ~p~n", [Payload])),
-	util:log(error, parser, "Server received: ~p~n", [Payload]),
-    {false, {response, {fault, -1, FaultString}}}.
+   	FaultString = lists:flatten(io_lib:format("Unknown call: ~p~n", [Payload])),
+   	util:log(error, parser, "Server received: ~p", [Payload]),
+    	{false, {response, {fault, -1, FaultString}}}.
