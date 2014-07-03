@@ -7,10 +7,12 @@
 </select>
 </form>
 <div id="map" style="width: 600px; height: 400px"></div>
+<input type="button" name="forecast_checkbox" id="forecast_checkbox" onclick="javascript:showForecast(600)" value="Test 5 min forecast">
+<div id="forecastWindow"></div>
 
 	<script>
 		var serviceURL = "ajax.yaws";
-		var methods = [ "forecasts" ];
+		var methods = [ "forecasts", "forecast_window" ];
 
 		var jsonrpc = imprt("jsonrpc");
 		var service = new jsonrpc.ServiceProxy(serviceURL, methods);
@@ -95,6 +97,25 @@
 			refresh_source.close();
 		}
 	};
+	function showForecast(window) {
+		var request = {time_window: window};
+		var forecast = document.getElementById("forecastWindow");
+		try {
+			service.forecast_window(request, function(res, err) {
+				if (res) {
+					forecast.innerHTML = res;
+					console.log(res);
+					alert("Done!");
+				} else if (err) {
+					alert(err);
+				}
+			}
+			);
+		} catch(e) {
+			alert(e);
+		}
+	};
+
 			var estimation_time = 0;
 	function updateTime(timeValue) {
 		var roads = ["trunk","primary","secondary","tertiary","residential"];

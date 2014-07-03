@@ -64,6 +64,11 @@ callback([{ip, IP}] = _State, {call, closest_node, Value} = _Request, Session) -
 	NodeDesc = node_holon:get_description(NodeId),
 	io:format("closest node: ~w, ~p~n", [NodeId, NodeDesc]),
 	{true, 0, Session, {response, {array, [atom_to_list(NodeId), NodeDesc]}}};
+callback([{ip, IP}] = _State, {call, forecast_window, Value} = _Request, Session) ->
+	{array, [{struct, [{"time_window", TimeWindow}]}]} = Value,
+	Forecast = modum_proxy:get_forecast(TimeWindow),
+        FlatForecast = [[[atom_to_list(Id),T, T+TimeStep,TravelTime] || {T,TravelTime} <- TravelTimes] || {Id, TravelTimes, TimeStep} <- Forecast],
+	{true, 0, Session, {response, {array, FlatForecast}}};
 callback([{ip, IP}] = _State, {call, forecasts, Value} = _Request, Session) ->
 	{array,[{struct,[{"time", Time},{"roads", {array, Roads}}]}]} = Value,
 	LinkIds = lists:flatten(lists:map(fun(Road) -> modum_proxy:get_links_of_type(Road) end,Roads)),

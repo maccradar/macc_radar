@@ -79,7 +79,7 @@ traffic_update_client() ->
 		EncCommand = base64:encode_to_string("<?xml version=\"1.0\" encoding=\"utf-8\" ?><updateRequest><id>1</id><mapCommand>\"NO_ACTION\"</mapCommand><commandString>\"None\"</commandString></updateRequest>"),
 		case gen_tcp:connect(Ip,Port,[{active, false}]) of
 			{ok, Socket} -> 
-				io:format("Request: ~p~n", [Request]),
+				util:log(display,traffic_update_client,"Request: ~p", [Request]),
 				case xmlrpc:call(Socket, "/RPC2", {call, request, [{base64, EncCommand}]}, false, 300000) of
 					{ok,{response,[EncResponse]}} ->
 						Response = base64:decode_to_string(EncResponse),
@@ -144,6 +144,7 @@ forecast_server(Xsd) ->
 				case erlsom:scan(Request, Model) of
 					{ok, Xml, _} ->
 						TimeWindow = Xml#forecastRequest.timeWindow,
+						util:log(display, {forecast_server}, "Sending forecast with timewindow ~p",[TimeWindow]),
 						F = modum_proxy:get_forecast(list_to_integer(TimeWindow)),
 						Forecast = prepare_forecast_output(F),
 						C = #forecastResponse{link=Forecast},

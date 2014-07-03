@@ -39,7 +39,11 @@ timestamp(sec, {Mega, Secs, Micro}) ->
 	
 timestamp(tuple, Seconds) ->
 	{Seconds div 1000000, Seconds rem 1000000, 0}.
-	
+
+log(display, Id, Message, Params) ->
+	String = "[~w | ~w:~w:~w | ~w]: " ++ Message ++ "~n",
+	{_,{H,M,S}} = calendar:now_to_local_time(erlang:now()),
+	io:format(String, [display,H,M,S,Id]++Params);	
 log(LogType, Id, Message, Params) ->
 	{ok, Logging} = application:get_env(util,{log,LogType}),
 	{ok, Write} = application:get_env(util, {write_log,LogType}),
